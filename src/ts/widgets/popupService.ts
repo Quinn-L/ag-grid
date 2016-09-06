@@ -175,7 +175,7 @@ export class PopupService {
     //adds an element to a div, but also listens to background checking for clicks,
     //so that when the background is clicked, the child is removed again, giving
     //a model look to popups.
-    public addAsModalPopup(eChild: any, closeOnEsc: boolean, closedCallback?: ()=>void) {
+    public addAsModalPopup(eChild: HTMLElement, closeOnEsc: boolean, closedCallback?: ()=>void) {
         var eBody = document.body;
         if (!eBody) {
             console.warn('ag-grid: could not find the body of the document, document.body is empty');
@@ -230,7 +230,8 @@ export class PopupService {
             }
             popupHidden = true;
 
-            that.getPopupParent().removeChild(eChild);
+            let parentNode = eChild.parentNode;
+            parentNode.removeChild(eChild);
             eBody.removeEventListener('keydown', hidePopupOnEsc);
             //eBody.removeEventListener('mousedown', hidePopupOnEsc);
             eBody.removeEventListener('click', hidePopup);
