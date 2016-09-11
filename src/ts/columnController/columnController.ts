@@ -154,6 +154,8 @@ export class ColumnApi {
 @Bean('columnController')
 export class ColumnController {
 
+    public static GROUP_AUTO_COLUMN_ID = 'ag-Grid-AutoColumn';
+
     @Autowired('gridOptionsWrapper') private gridOptionsWrapper: GridOptionsWrapper;
     @Autowired('expressionService') private expressionService: ExpressionService;
     @Autowired('balancedColumnTreeBuilder') private balancedColumnTreeBuilder: BalancedColumnTreeBuilder;
@@ -1362,7 +1364,7 @@ export class ColumnController {
         if (this.pivotMode && !this.secondaryColumnsPresent) {
             // pivot mode is on, but we are not pivoting, so we only
             // show columns we are aggregating on
-            columnsForDisplay = this.valueColumns.slice();
+            columnsForDisplay = this.createColumnsToDisplayFromValueColumns();
         } else {
             // otherwise continue as normal. this can be working on the primary
             // or secondary columns, whatever the gridColumns are set to
@@ -1376,6 +1378,17 @@ export class ColumnController {
         }
 
         return columnsForDisplay;
+    }
+
+    private createColumnsToDisplayFromValueColumns(): Column [] {
+        // make a copy of the value columns, so we have to side effects
+        var result = this.valueColumns.slice();
+        // order the columns as per the grid columns. having the order is
+        // important as without it, reordering of columns would have no impact
+        result.sort( (colA: Column, colB: Column)=> {
+            return this.gridColumns.indexOf(colA) - this.gridColumns.indexOf(colB);
+        });
+        return result;
     }
 
     private updateDisplayedColumns(): void {
@@ -1786,7 +1799,7 @@ export class ColumnController {
             // we never allow moving the group column
             autoColDef.suppressMovable = true;
 
-            var colId = 'ag-Grid-AutoColumn';
+            var colId = ColumnController.GROUP_AUTO_COLUMN_ID;
             this.groupAutoColumn = new Column(autoColDef, colId, true);
             this.context.wireBean(this.groupAutoColumn);
         }

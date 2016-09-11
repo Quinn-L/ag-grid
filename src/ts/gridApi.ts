@@ -32,6 +32,13 @@ import {CellRendererFactory} from "./rendering/cellRendererFactory";
 import {CellEditorFactory} from "./rendering/cellEditorFactory";
 import {IAggFuncService} from "./interfaces/iAggFuncService";
 
+export interface StartEditingCellParams {
+    rowIndex: number;
+    colKey: string|Column|ColDef;
+    keyPress?: number;
+    charPress?: string;
+}
+
 @Bean('gridApi')
 export class GridApi {
 
@@ -482,9 +489,10 @@ export class GridApi {
         this.rangeController.clearSelection();
     }
 
-    public copySelectedRowsToClipboard(includeHeader: boolean): void {
+    public copySelectedRowsToClipboard(includeHeader: boolean, columnKeys?: (string|Column|ColDef)[]): void {
         if (!this.clipboardService) { console.warn('ag-Grid: clipboard is only available in ag-Grid Enterprise'); }
-        this.clipboardService.copySelectedRowsToClipboard(includeHeader);
+        var column: Column = null;
+        this.clipboardService.copySelectedRowsToClipboard(includeHeader, columnKeys);
     }
 
     public copySelectedRangeToClipboard(includeHeader: boolean): void {
@@ -509,6 +517,12 @@ export class GridApi {
 
     public stopEditing(cancel: boolean = false): void {
         this.rowRenderer.stopEditing(cancel);
+    }
+
+    public startEditingCell(params: StartEditingCellParams): void {
+        var column = this.columnController.getGridColumn(params.colKey);
+        var gridCell = new GridCell(params.rowIndex, null, column);
+        this.rowRenderer.startEditingCell(gridCell, params.keyPress, params.charPress);
     }
 
     public addAggFunc(key: string, aggFunc: IAggFunc): void {
