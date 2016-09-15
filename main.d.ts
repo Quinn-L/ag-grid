@@ -55,6 +55,8 @@ export * from './dist/lib/interfaces/iClipboardService';
 export * from './dist/lib/interfaces/iCompFactory';
 export * from './dist/lib/interfaces/iContextMenuFactory';
 export * from './dist/lib/interfaces/iEventEmitter';
+export * from './dist/lib/interfaces/iFrameworkFactory';
+export * from './dist/lib/interfaces/iFilter';
 export * from './dist/lib/interfaces/iMenu';
 export * from './dist/lib/interfaces/iMenuFactory';
 export * from './dist/lib/interfaces/iRangeController';
@@ -67,6 +69,7 @@ export * from './dist/lib/layout/tabbedLayout';
 export * from './dist/lib/layout/verticalStack';
 
 export * from './dist/lib/misc/focusService';
+export * from './dist/lib/misc/methodNotImplementedException';
 
 export * from './dist/lib/rendering/cellEditors/iCellEditor';
 export * from './dist/lib/rendering/cellEditors/largeTextCellEditor';
@@ -114,6 +117,7 @@ export * from './dist/lib/widgets/menuItemComponent';
 export * from './dist/lib/widgets/menuList';
 export * from './dist/lib/widgets/popupService';
 
+export * from './dist/lib/baseFrameworkFactory';
 export * from './dist/lib/cellNavigationService';
 export * from './dist/lib/clientExports';
 export * from './dist/lib/columnChangeEvent';

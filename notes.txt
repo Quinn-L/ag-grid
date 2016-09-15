@@ -1,8 +1,10 @@
 Doing releases:
 
+Update the license manager, to next version.
+
 ag-Grid
 
-+ Update version in bower.jsonf
++ Update version in bower.json
 + Update version in package.json
 + Run 'gulp release'
 + Make sure any new files in 'dist' are added to Git

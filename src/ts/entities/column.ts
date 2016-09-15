@@ -7,7 +7,11 @@ import {Autowired, PostConstruct} from "../context/context";
 import {GridOptionsWrapper} from "../gridOptionsWrapper";
 import {ColumnUtils} from "../columnController/columnUtils";
 import {RowNode} from "./rowNode";
-import {IEventEmitter} from "../interfaces/iEventEmitter";
+import {BaseFrameworkFactory} from "../baseFrameworkFactory";
+import {ICellRenderer, ICellRendererFunc} from "../rendering/cellRenderers/iCellRenderer";
+import {ICellEditor} from "../rendering/cellEditors/iCellEditor";
+import {IFilter} from "../interfaces/iFilter";
+import {IFrameworkFactory} from "../interfaces/iFrameworkFactory";
 
 // Wrapper around a user provide column definition. The grid treats the column definition as ready only.
 // This class contains all the runtime information about a column, plus some logic (the definition has no logic).
@@ -29,9 +33,9 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     // + renderedColumn - for changing visibility icon
     public static EVENT_VISIBLE_CHANGED = 'visibleChanged';
     // + renderedHeaderCell - marks the header with filter icon
-    public static EVENT_FILTER_ACTIVE_CHANGED = 'filterChanged';
+    public static EVENT_FILTER_CHANGED = 'filterChanged';
     // + renderedHeaderCell - marks the header with sort icon
-    public static EVENT_SORT_CHANGED = 'filterChanged';
+    public static EVENT_SORT_CHANGED = 'sortChanged';
 
     // + toolpanel, for gui updates
     public static EVENT_ROW_GROUP_CHANGED = 'columnRowGroupChanged';
@@ -48,6 +52,7 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
 
     @Autowired('gridOptionsWrapper') private gridOptionsWrapper: GridOptionsWrapper;
     @Autowired('columnUtils') private columnUtils: ColumnUtils;
+    @Autowired('frameworkFactory') private frameworkFactory: IFrameworkFactory;
 
     private colDef: ColDef;
     private colId: any;
@@ -73,12 +78,18 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     private eventService: EventService = new EventService();
 
     private fieldContainsDots: boolean;
+    private tooltipFieldContainsDots: boolean;
 
     private rowGroupActive = false;
     private pivotActive = false;
     private aggregationActive = false;
 
     private primary: boolean;
+
+    private cellRenderer: {new(): ICellRenderer} | ICellRendererFunc | string;
+    private floatingCellRenderer: {new(): ICellRenderer} | ICellRendererFunc | string;
+    private cellEditor: {new(): ICellEditor} | string;
+    private filter: {new(): IFilter} | string;
 
     constructor(colDef: ColDef, colId: String, primary: boolean) {
         this.colDef = colDef;
@@ -92,6 +103,11 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     // this is done after constructor as it uses gridOptionsWrapper
     @PostConstruct
     public initialise(): void {
+        this.floatingCellRenderer = this.frameworkFactory.colDefFloatingCellRenderer(this.colDef);
+        this.cellRenderer = this.frameworkFactory.colDefCellRenderer(this.colDef);
+        this.cellEditor = this.frameworkFactory.colDefCellEditor(this.colDef);
+        this.filter = this.frameworkFactory.colDefFilter(this.colDef);
+
         this.setPinned(this.colDef.pinned);
 
         var minColWidth = this.gridOptionsWrapper.getMinColWidth();
@@ -113,8 +129,25 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
 
         var suppressDotNotation = this.gridOptionsWrapper.isSuppressFieldDotNotation();
         this.fieldContainsDots = _.exists(this.colDef.field) && this.colDef.field.indexOf('.')>=0 && !suppressDotNotation;
+        this.tooltipFieldContainsDots = _.exists(this.colDef.tooltipField) && this.colDef.tooltipField.indexOf('.')>=0 && !suppressDotNotation;
 
         this.validate();
+    }
+
+    public getCellRenderer(): {new(): ICellRenderer} | ICellRendererFunc | string {
+        return this.cellRenderer;
+    }
+
+    public getCellEditor(): {new(): ICellEditor} | string {
+        return this.cellEditor;
+    }
+
+    public getFloatingCellRenderer(): {new(): ICellRenderer} | ICellRendererFunc | string {
+        return this.floatingCellRenderer;
+    }
+
+    public getFilter(): {new(): IFilter} | string {
+        return this.filter;
     }
 
     public getUniqueId(): string {
@@ -131,6 +164,10 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     
     public isFieldContainsDots(): boolean {
         return this.fieldContainsDots;
+    }
+
+    public isTooltipFieldContainsDots(): boolean {
+        return this.tooltipFieldContainsDots;
     }
 
     private validate(): void {
@@ -248,7 +285,7 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     public setFilterActive(active: boolean): void {
         if (this.filterActive !== active) {
             this.filterActive = active;
-            this.eventService.dispatchEvent(Column.EVENT_FILTER_ACTIVE_CHANGED);
+            this.eventService.dispatchEvent(Column.EVENT_FILTER_CHANGED);
         }
     }
 

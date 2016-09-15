@@ -4,6 +4,7 @@ import {TextAndNumberFilterParameters} from "../filter/textAndNumberFilterParame
 import {ICellEditor} from "../rendering/cellEditors/iCellEditor";
 import {ICellRendererFunc, ICellRenderer} from "../rendering/cellRenderers/iCellRenderer";
 import {Column} from "./column";
+import {IFilter} from "../interfaces/iFilter";
 
 /** AbstractColDef can be a group or a column definition */
 export interface AbstractColDef {
@@ -95,14 +96,17 @@ export interface ColDef extends AbstractColDef {
 
     /** A function for rendering a cell. */
     cellRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    cellRendererFramework?: any;
     cellRendererParams?: {};
 
     /** Cell editor */
     cellEditor?: {new(): ICellEditor} | string;
+    cellEditorFramework?: any;
     cellEditorParams?: {};
 
     /** A function for rendering a floating cell. */
     floatingCellRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    floatingCellRendererFramework?: any;
     floatingCellRendererParams?: {};
 
     /** A function to format a value, should return a string. Not used for CSV export or copy to clipboard, only for UI cell rendering. */
@@ -174,7 +178,9 @@ export interface ColDef extends AbstractColDef {
     templateUrl?: string;
 
     /** one of the built in filter names: [set, number, text], or a filter function*/
-    filter?: string | Function;
+    filter?: string | {new(): IFilter};
+
+    filterFramework?: any;
 
     /** The filter params are specific to each filter! */
     filterParams?: SetFilterParameters | TextAndNumberFilterParameters;

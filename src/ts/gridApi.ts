@@ -31,6 +31,7 @@ import {VirtualPageRowModel} from "./rowControllers/virtualPagination/virtualPag
 import {CellRendererFactory} from "./rendering/cellRendererFactory";
 import {CellEditorFactory} from "./rendering/cellEditorFactory";
 import {IAggFuncService} from "./interfaces/iAggFuncService";
+import {IFilter} from "./interfaces/iFilter";
 
 export interface StartEditingCellParams {
     rowIndex: number;
@@ -140,6 +141,22 @@ export class GridApi {
 
     public setFloatingBottomRowData(rows: any[]): void {
         this.floatingRowModel.setFloatingBottomRowData(rows);
+    }
+
+    public getFloatingTopRowCount(): number {
+        return this.floatingRowModel.getFloatingTopRowCount();
+    }
+
+    public getFloatingBottomRowCount(): number {
+        return this.floatingRowModel.getFloatingBottomRowCount();
+    }
+
+    public getFloatingTopRow(index: number): RowNode {
+        return this.floatingRowModel.getFloatingTopRow(index);
+    }
+
+    public getFloatingBottomRow(index: number): RowNode {
+        return this.floatingRowModel.getFloatingBottomRow(index);
     }
 
     public setColumnDefs(colDefs: ColDef[]) {
@@ -365,16 +382,21 @@ export class GridApi {
         this.inMemoryRowModel.forEachNodeAfterFilterAndSort(callback);
     }
 
-    public getFilterApiForColDef(colDef:any) {
+    public getFilterApiForColDef(colDef: any): any {
         console.warn('ag-grid API method getFilterApiForColDef deprecated, use getFilterApi instead');
-        return this.getFilterApi(colDef);
+        return this.getFilterInstance(colDef);
+    }
+
+    public getFilterInstance(key: string|Column|ColDef): IFilter {
+        var column = this.columnController.getPrimaryColumn(key);
+        if (column) {
+            return this.filterManager.getFilterComponent(column);
+        }
     }
 
     public getFilterApi(key: string|Column|ColDef) {
-        var column = this.columnController.getPrimaryColumn(key);
-        if (column) {
-            return this.filterManager.getFilterApi(column);
-        }
+        console.warn('ag-Grid: getFilterApi is deprecated, use getFilterComponent instead');
+        return this.getFilterInstance(key);
     }
 
     public destroyFilter(key: string|Column|ColDef) {

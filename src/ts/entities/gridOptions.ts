@@ -152,8 +152,10 @@ export interface GridOptions {
 
     // callbacks
     groupRowRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    groupRowRendererFramework?: any;
     groupRowRendererParams?: any;
     groupRowInnerRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    groupRowInnerRendererFramework?: any;
     isScrollLag?(): boolean;
     isExternalFilterPresent?(): boolean;
     doesExternalFilterPass?(node: RowNode): boolean;
@@ -162,6 +164,7 @@ export interface GridOptions {
     getRowHeight?: Function;
 
     fullWidthCellRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    fullWidthCellRendererFramework?: any;
     fullWidthCellRendererParams?: any;
     isFullWidthCell?(rowNode: RowNode): boolean;
 
