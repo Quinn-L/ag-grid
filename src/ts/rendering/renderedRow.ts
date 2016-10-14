@@ -58,6 +58,8 @@ export class RenderedRow {
 
     private renderedRowEventService: EventService;
 
+    private editingRow = false;
+
     private initialised = false;
 
     constructor(parentScope: any,
@@ -135,6 +137,10 @@ export class RenderedRow {
         }
 
         this.eFullWidthRow = this.createRowContainer(this.eFullWidthContainer);
+
+        if (!this.gridOptionsWrapper.isForPrint()) {
+            this.addMouseWheelListenerToFullWidthRow();
+        }
     }
 
     private setupNormalContainers(): void {
@@ -193,6 +199,46 @@ export class RenderedRow {
         this.addDataChangedListener();
 
         this.initialised = true;
+    }
+
+    public stopRowEditing(cancel: boolean): void {
+        this.stopEditing(cancel);
+    }
+
+    public stopEditing(cancel = false): void {
+        this.forEachRenderedCell( renderedCell => {
+            renderedCell.stopEditing(cancel);
+        });
+        this.setEditingRow(false);
+        if (!cancel) {
+            var event = {
+                node: this.rowNode,
+                data: this.rowNode.data,
+                api: this.gridOptionsWrapper.getApi(),
+                context: this.gridOptionsWrapper.getContext()
+            };
+            this.mainEventService.dispatchEvent(Events.EVENT_ROW_VALUE_CHANGED, event);
+        }
+    }
+
+    public startRowEditing(keyPress: number = null, charPress: string = null, sourceRenderedCell: RenderedCell = null): void {
+        // don't do it if already editing
+        if (this.editingRow) { return; }
+
+        this.forEachRenderedCell( renderedCell => {
+            var cellStartedEdit = renderedCell === sourceRenderedCell;
+            if (cellStartedEdit) {
+                renderedCell.startEditingIfEnabled(keyPress, charPress, cellStartedEdit)
+            } else {
+                renderedCell.startEditingIfEnabled(null, null, cellStartedEdit)
+            }
+        });
+        this.setEditingRow(true);
+    }
+
+    private setEditingRow(value: boolean): void {
+        this.editingRow = value;
+        this.eAllRowContainers.forEach( (row) => _.addOrRemoveCssClass(row, 'ag-row-editing', value) );
     }
 
     // because data can change, especially in virtual pagination and viewport row models, need to allow setting
@@ -328,6 +374,13 @@ export class RenderedRow {
             this.context.wireBean(renderedCell);
             this.renderedCells[colId] = renderedCell;
             this.angular1Compile(renderedCell.getGui());
+
+            // if we are editing the row, then the cell needs to turn
+            // into edit mode
+            if (this.editingRow) {
+                renderedCell.startEditingIfEnabled();
+            }
+
             return renderedCell;
         }
     }
@@ -384,6 +437,10 @@ export class RenderedRow {
                 this.eAllRowContainers.forEach( (row) => _.addOrRemoveCssClass(row, 'ag-row-focus', rowFocused) );
                 this.eAllRowContainers.forEach( (row) => _.addOrRemoveCssClass(row, 'ag-row-no-focus', !rowFocused) );
                 rowFocusedLastTime = rowFocused;
+            }
+
+            if (!rowFocused && this.editingRow) {
+                this.stopEditing(false);
             }
         };
         this.mainEventService.addEventListener(Events.EVENT_CELL_FOCUSED, rowFocusedListener);

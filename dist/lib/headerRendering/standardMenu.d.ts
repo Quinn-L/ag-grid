@@ -1,4 +1,4 @@
-// Type definitions for ag-grid v6.0.1
+// Type definitions for ag-grid v6.2.1
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
@@ -8,7 +8,7 @@ export declare class StandardMenuFactory implements IMenuFactory {
     private filterManager;
     private popupService;
     private gridOptionsWrapper;
-    showMenuAfterMouseEvent(column: Column, mouseEvent: MouseEvent): void;
+    showMenuAfterMouseEvent(column: Column, mouseEvent: MouseEvent | Touch): void;
     showMenuAfterButtonClick(column: Column, eventSource: HTMLElement): void;
     showPopup(column: Column, positionCallback: (eMenu: HTMLElement) => void): void;
     isMenuEnabled(column: Column): boolean;

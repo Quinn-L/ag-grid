@@ -1,4 +1,4 @@
-// Type definitions for ag-grid v6.0.1
+// Type definitions for ag-grid v6.2.1
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
@@ -54,7 +54,10 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     private floatingCellRenderer;
     private cellEditor;
     private filter;
+    private parent;
     constructor(colDef: ColDef, colId: String, primary: boolean);
+    setParent(parent: ColumnGroupChild): void;
+    getParent(): ColumnGroupChild;
     initialise(): void;
     getCellRenderer(): {
         new (): ICellRenderer;
@@ -76,6 +79,8 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     private validate();
     addEventListener(eventType: string, listener: Function): void;
     removeEventListener(eventType: string, listener: Function): void;
+    private createIsColumnFuncParams(rowNode);
+    isSuppressNavigable(rowNode: RowNode): boolean;
     isCellEditable(rowNode: RowNode): boolean;
     setMoving(moving: boolean): void;
     isMoving(): boolean;

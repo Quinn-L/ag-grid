@@ -28,7 +28,6 @@ import {CellRendererService} from "./cellRendererService";
 import {ValueFormatterService} from "./valueFormatterService";
 import {CheckboxSelectionComponent} from "./checkboxSelectionComponent";
 import {SetLeftFeature} from "./features/setLeftFeature";
-import {BaseFrameworkFactory} from "../baseFrameworkFactory";
 import {MethodNotImplementedException} from "../misc/methodNotImplementedException";
 
 export class RenderedCell extends Component {
@@ -85,9 +84,7 @@ export class RenderedCell extends Component {
     private firstRightPinned = false;
     private lastLeftPinned = false;
 
-    constructor(column: any,
-                node: any, rowIndex: number, scope: any,
-                renderedRow: RenderedRow) {
+    constructor(column: Column, node: RowNode, rowIndex: number, scope: any, renderedRow: RenderedRow) {
         super('<div/>');
 
         // because we reference eGridCell everywhere in this class,
@@ -102,6 +99,22 @@ export class RenderedCell extends Component {
         this.renderedRow = renderedRow;
 
         this.gridCell = new GridCell(rowIndex, node.floating, column);
+    }
+
+    public getGridCell(): GridCell {
+        return this.gridCell;
+    }
+
+    public setFocusInOnEditor(): void {
+        if (this.editingCell && this.cellEditor && this.cellEditor.focusIn) {
+            this.cellEditor.focusIn();
+        }
+    }
+
+    public setFocusOutOnEditor(): void {
+        if (this.editingCell && this.cellEditor && this.cellEditor.focusOut) {
+            this.cellEditor.focusOut();
+        }
     }
 
     public destroy(): void {
@@ -145,7 +158,7 @@ export class RenderedCell extends Component {
         this.eParentRow = eParentRow;
     }
 
-    public calculateCheckboxSelection() {
+    public calculateCheckboxSelection(): boolean {
         // never allow selection on floating rows
         if (this.node.floating) {
             return false;
@@ -154,14 +167,14 @@ export class RenderedCell extends Component {
         // if boolean set, then just use it
         var colDef = this.column.getColDef();
         if (typeof colDef.checkboxSelection === 'boolean') {
-            return colDef.checkboxSelection;
+            return <boolean> colDef.checkboxSelection;
         }
 
         // if function, then call the function to find out. we first check colDef for
         // a function, and if missing then check gridOptions, so colDef has precedence
-        var selectionFunc: Function;
+        var selectionFunc: (params: any)=>boolean;
         if (typeof colDef.checkboxSelection === 'function') {
-            selectionFunc = <Function>colDef.checkboxSelection;
+            selectionFunc = <(params: any)=>boolean> colDef.checkboxSelection;
         }
         if (!selectionFunc && this.gridOptionsWrapper.getCheckboxSelection()) {
             selectionFunc = this.gridOptionsWrapper.getCheckboxSelection();
@@ -300,10 +313,12 @@ export class RenderedCell extends Component {
             }
 
             // if another cell was focused, and we are editing, then stop editing
-            if (this.editingCell && !cellFocused) {
-                this.stopEditing();
+            var fullRowEdit = this.gridOptionsWrapper.isFullRowEdit();
+            if (!cellFocused && !fullRowEdit && this.editingCell) {
+                this.stopRowOrCellEdit();
             }
         };
+
         this.eventService.addEventListener(Events.EVENT_CELL_FOCUSED, cellFocusedListener);
         this.addDestroyFunc( ()=> {
             this.eventService.removeEventListener(Events.EVENT_CELL_FOCUSED, cellFocusedListener);
@@ -337,7 +352,7 @@ export class RenderedCell extends Component {
         this.addCellFocusedListener();
         this.addKeyDownListener();
         this.addKeyPressListener();
-        // this.addFocusListener();
+        this.addSuppressShortcutKeyListenersWhileEditing();
 
         var setLeftFeature = new SetLeftFeature(this.column, this.eGridCell);
         this.addDestroyFunc(setLeftFeature.destroy.bind(setLeftFeature));
@@ -356,29 +371,29 @@ export class RenderedCell extends Component {
 
     private onEnterKeyDown(): void {
         if (this.editingCell) {
-            this.stopEditing();
+            this.stopRowOrCellEdit();
             this.focusCell(true);
         } else {
-            this.startEditingIfEnabled(Constants.KEY_ENTER);
+            this.startRowOrCellEdit(Constants.KEY_ENTER);
         }
     }
 
     private onF2KeyDown(): void {
         if (!this.editingCell) {
-            this.startEditingIfEnabled(Constants.KEY_F2);
+            this.startRowOrCellEdit(Constants.KEY_F2);
         }
     }
 
     private onEscapeKeyDown(): void {
         if (this.editingCell) {
-            this.stopEditing(true);
+            this.stopRowOrCellEdit(true);
             this.focusCell(true);
         }
     }
 
     private onPopupEditorClosed(): void {
         if (this.editingCell) {
-            this.stopEditing(true);
+            this.stopRowOrCellEdit(true);
 
             // we only focus cell again if this cell is still focused. it is possible
             // it is not focused if the user cancelled the edit by clicking on another
@@ -389,27 +404,17 @@ export class RenderedCell extends Component {
         }
     }
 
-    private onTabKeyDown(event: any): void {
-        var editNextCell: boolean;
-        if (this.editingCell) {
-            // if editing, we stop editing, then start editing next cell
-            this.stopEditing();
-            editNextCell = true;
-        } else {
-            // otherwise we just move to the next cell
-            editNextCell = false;
-        }
-        var foundCell = this.rowRenderer.moveFocusToNextCell(this.rowIndex, this.column, this.node.floating, event.shiftKey, editNextCell);
-        // only prevent default if we found a cell. so if user is on last cell and hits tab, then we default
-        // to the normal tabbing so user can exit the grid.
-        if (foundCell) {
-            event.preventDefault();
-        }
+    public isEditing(): boolean {
+        return this.editingCell;
+    }
+
+    private onTabKeyDown(event: KeyboardEvent): void {
+        this.rowRenderer.onTabKeyDown(this, event);
     }
 
     private onBackspaceOrDeleteKeyPressed(key: number): void {
         if (!this.editingCell) {
-            this.startEditingIfEnabled(key);
+            this.startRowOrCellEdit(key);
         }
     }
 
@@ -424,7 +429,7 @@ export class RenderedCell extends Component {
 
     private onNavigationKeyPressed(event: any, key: number): void {
         if (this.editingCell) {
-            this.stopEditing();
+            this.stopRowOrCellEdit();
         }
         this.rowRenderer.navigateToNextCell(key, this.rowIndex, this.column, this.node.floating);
         // if we don't prevent default, the grid will scroll with the navigation keys
@@ -445,7 +450,7 @@ export class RenderedCell extends Component {
                     this.onSpaceKeyPressed(event);
                 } else {
                     if (RenderedCell.PRINTABLE_CHARACTERS.indexOf(pressedChar)>=0) {
-                        this.startEditingIfEnabled(null, pressedChar);
+                        this.startRowOrCellEdit(null, pressedChar);
                         // if we don't prevent default, then the keypress also gets applied to the text field
                         // (at least when doing the default editor), but we need to allow the editor to decide
                         // what it wants to do. we only do this IF editing was started - otherwise it messes
@@ -499,7 +504,7 @@ export class RenderedCell extends Component {
         });
     }
 
-    private createCellEditorParams(keyPress?: number, charPress?: string): ICellEditorParams {
+    private createCellEditorParams(keyPress: number, charPress: string, cellStartedEdit: boolean): ICellEditorParams {
         var params: ICellEditorParams = {
             value: this.getValue(),
             keyPress: keyPress,
@@ -507,6 +512,7 @@ export class RenderedCell extends Component {
             column: this.column,
             node: this.node,
             api: this.gridOptionsWrapper.getApi(),
+            cellStartedEdit: cellStartedEdit,
             columnApi: this.gridOptionsWrapper.getColumnApi(),
             context: this.gridOptionsWrapper.getContext(),
             onKeyDown: this.onKeyDown.bind(this),
@@ -522,9 +528,9 @@ export class RenderedCell extends Component {
         return params;
     }
 
-    private createCellEditor(keyPress?: number, charPress?: string): ICellEditor {
+    private createCellEditor(keyPress: number, charPress: string, cellStartedEdit: boolean): ICellEditor {
 
-        var params = this.createCellEditorParams(keyPress, charPress);
+        var params = this.createCellEditorParams(keyPress, charPress, cellStartedEdit);
 
         var cellEditor = this.cellEditorFactory.createCellEditor(this.column.getCellEditor(), params);
 
@@ -534,23 +540,34 @@ export class RenderedCell extends Component {
     // cell editors call this, when they want to stop for reasons other
     // than what we pick up on. eg selecting from a dropdown ends editing.
     private stopEditingAndFocus(): void {
-        this.stopEditing();
+        this.stopRowOrCellEdit();
         this.focusCell(true);
     }
 
     // called by rowRenderer when user navigates via tab key
-    public startEditingIfEnabled(keyPress?: number, charPress?: string) {
-
-        if (!this.isCellEditable()) {
-            return;
+    public startRowOrCellEdit(keyPress?: number, charPress?: string): void {
+        if (this.gridOptionsWrapper.isFullRowEdit()) {
+            this.renderedRow.startRowEditing(keyPress, charPress, this);
+        } else {
+            this.startEditingIfEnabled(keyPress, charPress, true);
         }
+    }
 
-        var cellEditor = this.createCellEditor(keyPress, charPress);
+    // either called internally if single cell editing, or called by rowRenderer if row editing
+    public startEditingIfEnabled(keyPress: number = null, charPress: string = null, cellStartedEdit = false) {
+
+        // don't do it if not editable
+        if (!this.isCellEditable()) { return; }
+
+        // don't do it if already editing
+        if (this.editingCell) { return; }
+
+        var cellEditor = this.createCellEditor(keyPress, charPress, cellStartedEdit);
         if (cellEditor.isCancelBeforeStart && cellEditor.isCancelBeforeStart()) {
             if (cellEditor.destroy) {
                 cellEditor.destroy();
             }
-            return;
+            return false;
         }
 
         if (!cellEditor.getGui) {
@@ -561,7 +578,7 @@ export class RenderedCell extends Component {
                 console.warn(`ag-Grid: we found 'render' on the component, are you trying to set a React renderer but added it as colDef.cellEditor instead of colDef.cellEditorFmk?`);
             }
 
-            return;
+            return false;
         }
 
         this.cellEditor = cellEditor;
@@ -578,6 +595,8 @@ export class RenderedCell extends Component {
         if (cellEditor.afterGuiAttached) {
             cellEditor.afterGuiAttached();
         }
+
+        return true;
     }
 
     private addInCellEditor(): void {
@@ -618,16 +637,24 @@ export class RenderedCell extends Component {
         }
     }
 
-    public focusCell(forceBrowserFocus: boolean): void {
+    public focusCell(forceBrowserFocus = false): void {
         this.focusedCellController.setFocusedCell(this.rowIndex, this.column, this.node.floating, forceBrowserFocus);
     }
 
     // pass in 'true' to cancel the editing.
-    public stopEditing(cancel: boolean = false) {
+    public stopRowOrCellEdit(cancel: boolean = false) {
+        if (this.gridOptionsWrapper.isFullRowEdit()) {
+            this.renderedRow.stopRowEditing(cancel);
+        } else {
+            this.stopEditing(cancel);
+        }
+    }
+
+    public stopEditing(cancel = false): void {
         if (!this.editingCell) {
             return;
         }
-        
+
         this.editingCell = false;
 
         // also have another option here to cancel after editing, so for example user could have a popup editor and
@@ -692,10 +719,15 @@ export class RenderedCell extends Component {
         return agEvent;
     }
 
+    public getRenderedRow(): RenderedRow {
+        return this.renderedRow;
+    }
+
+    public isSuppressNavigable(): boolean {
+        return this.column.isSuppressNavigable(this.node);
+    }
+
     public isCellEditable() {
-        if (this.editingCell) {
-            return false;
-        }
 
         // never allow editing of groups
         if (this.node.group) {
@@ -703,6 +735,19 @@ export class RenderedCell extends Component {
         }
 
         return this.column.isCellEditable(this.node);
+    }
+
+    private addSuppressShortcutKeyListenersWhileEditing(): void {
+        var keyDownListener = (event: any)=> {
+            if (this.editingCell) {
+                var metaKey = event.ctrlKey || event.metaKey;
+                var keyOfInterest = [Constants.KEY_A, Constants.KEY_C, Constants.KEY_V, Constants.KEY_D].indexOf(event.which) >= 0;
+                if (metaKey && keyOfInterest) {
+                    event.stopPropagation();
+                }
+            }
+        };
+        this.addDestroyableEventListener(this.eGridCell, 'keydown', keyDownListener);
     }
 
     public onMouseEvent(eventName: string, mouseEvent: MouseEvent): void {
@@ -748,7 +793,7 @@ export class RenderedCell extends Component {
         }
 
         if (!this.gridOptionsWrapper.isSingleClickEdit()) {
-            this.startEditingIfEnabled();
+            this.startRowOrCellEdit();
         }
     }
 
@@ -784,7 +829,7 @@ export class RenderedCell extends Component {
         }
 
         if (this.gridOptionsWrapper.isSingleClickEdit()) {
-            this.startEditingIfEnabled();
+            this.startRowOrCellEdit();
         }
     }
 
