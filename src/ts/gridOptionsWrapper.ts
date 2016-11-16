@@ -20,6 +20,7 @@ import {IViewportDatasource} from "./interfaces/iViewportDatasource";
 import {ICellRendererFunc, ICellRenderer} from "./rendering/cellRenderers/iCellRenderer";
 import {Logger, LoggerFactory} from "./logger";
 import {IFrameworkFactory} from "./interfaces/iFrameworkFactory";
+import {IDatasource} from "./rowControllers/iDatasource";
 
 var DEFAULT_ROW_HEIGHT = 25;
 var DEFAULT_VIEWPORT_ROW_MODEL_PAGE_SIZE = 5;
@@ -57,6 +58,8 @@ export class GridOptionsWrapper {
     private groupRowRenderer : {new(): ICellRenderer} | ICellRendererFunc | string;
     private groupRowInnerRenderer : {new(): ICellRenderer} | ICellRendererFunc | string;
 
+    private domDataKey = '__AG_'+Math.random().toString;
+
     private agWire(@Qualifier('gridApi') gridApi: GridApi, @Qualifier('columnApi') columnApi: ColumnApi): void {
         this.gridOptions.api = gridApi;
         this.gridOptions.columnApi = columnApi;
@@ -93,6 +96,10 @@ export class GridOptionsWrapper {
         this.groupRowInnerRenderer = this.frameworkFactory.gridOptionsGroupRowInnerRenderer(this.gridOptions);
     }
 
+    public getDomDataKey(): string {
+        return this.domDataKey;
+    }
+
     // the cellRenderers come from the instances for this class, not from gridOptions, which allows
     // the baseFrameworkFactory to replace with framework specific ones
     public getFullWidthCellRenderer(): {new(): ICellRenderer} | ICellRendererFunc | string { return this.fullWidthCellRenderer; }
@@ -118,6 +125,7 @@ export class GridOptionsWrapper {
     public isToolPanelSuppressValues() { return isTrue(this.gridOptions.toolPanelSuppressValues); }
     public isToolPanelSuppressPivots() { return isTrue(this.gridOptions.toolPanelSuppressPivots); }
     public isToolPanelSuppressPivotMode() { return isTrue(this.gridOptions.toolPanelSuppressPivotMode); }
+    public isSuppressTouch() { return isTrue(this.gridOptions.suppressTouch); }
     public isEnableCellChangeFlash() { return isTrue(this.gridOptions.enableCellChangeFlash); }
     public isGroupSelectsChildren() { return isTrue(this.gridOptions.groupSelectsChildren); }
     public isGroupIncludeFooter() { return isTrue(this.gridOptions.groupIncludeFooter); }
@@ -135,6 +143,7 @@ export class GridOptionsWrapper {
     public getFloatingTopRowData(): any[] { return this.gridOptions.floatingTopRowData; }
     public getFloatingBottomRowData(): any[] { return this.gridOptions.floatingBottomRowData; }
     public isFunctionsPassive() { return isTrue(this.gridOptions.functionsPassive); }
+    public isSuppressRowHoverClass() { return isTrue(this.gridOptions.suppressRowHoverClass); }
 
     public getQuickFilterText(): string { return this.gridOptions.quickFilterText; }
     public isUnSortIcon() { return isTrue(this.gridOptions.unSortIcon); }
@@ -144,6 +153,7 @@ export class GridOptionsWrapper {
     public getRowStyleFunc() { return this.gridOptions.getRowStyle; }
     public getRowClassFunc() { return this.gridOptions.getRowClass; }
     public getDoesDataFlowerFunc(): (data: any)=>boolean { return this.gridOptions.doesDataFlower; }
+    public getScrollbarWidth() { return this.gridOptions.scrollbarWidth; }
 
     public getIsFullWidthCellFunc(): (rowNode: RowNode)=> boolean { return this.gridOptions.isFullWidthCell; }
     public getFullWidthCellRendererParams() { return this.gridOptions.fullWidthCellRendererParams; }
@@ -174,7 +184,7 @@ export class GridOptionsWrapper {
     public isAngularCompileHeaders() { return isTrue(this.gridOptions.angularCompileHeaders); }
     public isDebug() { return isTrue(this.gridOptions.debug); }
     public getColumnDefs() { return this.gridOptions.columnDefs; }
-    public getDatasource() { return this.gridOptions.datasource; }
+    public getDatasource(): IDatasource { return this.gridOptions.datasource; }
     public getViewportDatasource(): IViewportDatasource { return this.gridOptions.viewportDatasource; }
     public isEnableSorting() { return isTrue(this.gridOptions.enableSorting) || isTrue(this.gridOptions.enableServerSideSorting); }
     public isEnableCellExpressions() { return isTrue(this.gridOptions.enableCellExpressions); }
@@ -225,6 +235,7 @@ export class GridOptionsWrapper {
     public getProcessSecondaryColGroupDefFunc(): (colGroupDef: ColGroupDef)=>void { return this.gridOptions.processSecondaryColGroupDef; }
 
     public getProcessCellForClipboardFunc(): (params: ProcessCellForExportParams)=>any { return this.gridOptions.processCellForClipboard; }
+    public getProcessCellFromClipboardFunc(): (params: ProcessCellForExportParams)=>any { return this.gridOptions.processCellFromClipboard; }
     public getViewportRowModelPageSize(): number { return positiveNumberOrZero(this.gridOptions.viewportRowModelPageSize, DEFAULT_VIEWPORT_ROW_MODEL_PAGE_SIZE); }
     public getViewportRowModelBufferSize(): number { return positiveNumberOrZero(this.gridOptions.viewportRowModelBufferSize, DEFAULT_VIEWPORT_ROW_MODEL_BUFFER_SIZE); }
     // public getCellRenderers(): {[key: string]: {new(): ICellRenderer} | ICellRendererFunc} { return this.gridOptions.cellRenderers; }
@@ -392,9 +403,10 @@ export class GridOptionsWrapper {
     }
 
     public getRowHeightForNode(rowNode: RowNode): number {
-        if (typeof this.gridOptions.rowHeight === 'number') {
-            return this.gridOptions.rowHeight;
-        } else if (typeof this.gridOptions.getRowHeight === 'function') {
+        // check the function first, in case use set both function and
+        // number, when using virtual pagination then function can be
+        // used for floating rows and the number for the body rows.
+        if (typeof this.gridOptions.getRowHeight === 'function') {
             var params = {
                 node: rowNode,
                 data: rowNode.data,
@@ -402,6 +414,8 @@ export class GridOptionsWrapper {
                 context: this.gridOptions.context
             };
             return this.gridOptions.getRowHeight(params);
+        } else if (typeof this.gridOptions.rowHeight === 'number') {
+            return this.gridOptions.rowHeight;
         } else {
             return DEFAULT_ROW_HEIGHT;
         }

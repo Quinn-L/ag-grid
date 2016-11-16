@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v6.2.1
+ * @version v6.4.2
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -285,9 +285,8 @@ var RenderedCell = (function (_super) {
         this.addHighlightListener();
         this.addChangeListener();
         this.addCellFocusedListener();
-        this.addKeyDownListener();
-        this.addKeyPressListener();
-        this.addSuppressShortcutKeyListenersWhileEditing();
+        this.addDomData();
+        // this.addSuppressShortcutKeyListenersWhileEditing();
         var setLeftFeature = new setLeftFeature_1.SetLeftFeature(this.column, this.eGridCell);
         this.addDestroyFunc(setLeftFeature.destroy.bind(setLeftFeature));
         // only set tab index if cell selection is enabled
@@ -299,6 +298,14 @@ var RenderedCell = (function (_super) {
         this.setInlineEditingClass();
         this.createParentOfValue();
         this.populateCell();
+    };
+    RenderedCell.prototype.addDomData = function () {
+        var domDataKey = this.gridOptionsWrapper.getDomDataKey();
+        var gridCellNoType = this.eGridCell;
+        gridCellNoType[domDataKey] = {
+            renderedCell: this
+        };
+        this.addDestroyFunc(function () { return gridCellNoType[domDataKey] = null; });
     };
     RenderedCell.prototype.onEnterKeyDown = function () {
         if (this.editingCell) {
@@ -358,38 +365,31 @@ var RenderedCell = (function (_super) {
         // if we don't prevent default, the grid will scroll with the navigation keys
         event.preventDefault();
     };
-    RenderedCell.prototype.addKeyPressListener = function () {
-        var _this = this;
-        var keyPressListener = function (event) {
-            // check this, in case focus is on a (for example) a text field inside the cell,
-            // in which cse we should not be listening for these key pressed
-            var eventTarget = utils_1.Utils.getTarget(event);
-            var eventOnChildComponent = eventTarget !== _this.getGui();
-            if (eventOnChildComponent) {
-                return;
+    RenderedCell.prototype.onKeyPress = function (event) {
+        // check this, in case focus is on a (for example) a text field inside the cell,
+        // in which cse we should not be listening for these key pressed
+        var eventTarget = utils_1.Utils.getTarget(event);
+        var eventOnChildComponent = eventTarget !== this.getGui();
+        if (eventOnChildComponent) {
+            return;
+        }
+        if (!this.editingCell) {
+            var pressedChar = String.fromCharCode(event.charCode);
+            if (pressedChar === ' ') {
+                this.onSpaceKeyPressed(event);
             }
-            if (!_this.editingCell) {
-                var pressedChar = String.fromCharCode(event.charCode);
-                if (pressedChar === ' ') {
-                    _this.onSpaceKeyPressed(event);
-                }
-                else {
-                    if (RenderedCell.PRINTABLE_CHARACTERS.indexOf(pressedChar) >= 0) {
-                        _this.startRowOrCellEdit(null, pressedChar);
-                        // if we don't prevent default, then the keypress also gets applied to the text field
-                        // (at least when doing the default editor), but we need to allow the editor to decide
-                        // what it wants to do. we only do this IF editing was started - otherwise it messes
-                        // up when the use is not doing editing, but using rendering with text fields in cellRenderer
-                        // (as it would block the the user from typing into text fields).
-                        event.preventDefault();
-                    }
+            else {
+                if (RenderedCell.PRINTABLE_CHARACTERS.indexOf(pressedChar) >= 0) {
+                    this.startRowOrCellEdit(null, pressedChar);
+                    // if we don't prevent default, then the keypress also gets applied to the text field
+                    // (at least when doing the default editor), but we need to allow the editor to decide
+                    // what it wants to do. we only do this IF editing was started - otherwise it messes
+                    // up when the use is not doing editing, but using rendering with text fields in cellRenderer
+                    // (as it would block the the user from typing into text fields).
+                    event.preventDefault();
                 }
             }
-        };
-        this.eGridCell.addEventListener('keypress', keyPressListener);
-        this.addDestroyFunc(function () {
-            _this.eGridCell.removeEventListener('keypress', keyPressListener);
-        });
+        }
     };
     RenderedCell.prototype.onKeyDown = function (event) {
         var key = event.which || event.keyCode;
@@ -417,14 +417,6 @@ var RenderedCell = (function (_super) {
                 this.onNavigationKeyPressed(event, key);
                 break;
         }
-    };
-    RenderedCell.prototype.addKeyDownListener = function () {
-        var _this = this;
-        var editingKeyListener = this.onKeyDown.bind(this);
-        this.eGridCell.addEventListener('keydown', editingKeyListener);
-        this.addDestroyFunc(function () {
-            _this.eGridCell.removeEventListener('keydown', editingKeyListener);
-        });
     };
     RenderedCell.prototype.createCellEditorParams = function (keyPress, charPress, cellStartedEdit) {
         var params = {
@@ -628,19 +620,6 @@ var RenderedCell = (function (_super) {
         }
         return this.column.isCellEditable(this.node);
     };
-    RenderedCell.prototype.addSuppressShortcutKeyListenersWhileEditing = function () {
-        var _this = this;
-        var keyDownListener = function (event) {
-            if (_this.editingCell) {
-                var metaKey = event.ctrlKey || event.metaKey;
-                var keyOfInterest = [constants_1.Constants.KEY_A, constants_1.Constants.KEY_C, constants_1.Constants.KEY_V, constants_1.Constants.KEY_D].indexOf(event.which) >= 0;
-                if (metaKey && keyOfInterest) {
-                    event.stopPropagation();
-                }
-            }
-        };
-        this.addDestroyableEventListener(this.eGridCell, 'keydown', keyDownListener);
-    };
     RenderedCell.prototype.onMouseEvent = function (eventName, mouseEvent) {
         switch (eventName) {
             case 'click':
@@ -715,6 +694,19 @@ var RenderedCell = (function (_super) {
         }
         if (this.gridOptionsWrapper.isSingleClickEdit()) {
             this.startRowOrCellEdit();
+        }
+        this.doIeFocusHack();
+    };
+    // https://ag-grid.com/forum/showthread.php?tid=4362
+    // when in IE or Edge, when you are editing a cell, then click on another cell,
+    // the other cell doesn't keep focus, so navigation keys, type to start edit etc
+    // don't work. appears that when you update the dom in IE it looses focus
+    RenderedCell.prototype.doIeFocusHack = function () {
+        if (utils_1.Utils.isBrowserIE() || utils_1.Utils.isBrowserEdge()) {
+            if (utils_1.Utils.missing(document.activeElement) || document.activeElement === document.body) {
+                // console.log('missing focus');
+                this.getGui().focus();
+            }
         }
     };
     // if we are editing inline, then we don't have the padding in the cell (set in the themes)
@@ -933,7 +925,8 @@ var RenderedCell = (function (_super) {
         }
         else {
             // if we insert undefined, then it displays as the string 'undefined', ugly!
-            var valueToRender = utils_1.Utils.exists(valueFormatted) ? valueFormatted : this.value;
+            var valueFormattedExits = valueFormatted !== null && valueFormatted !== undefined;
+            var valueToRender = valueFormattedExits ? valueFormatted : this.value;
             if (utils_1.Utils.exists(valueToRender) && valueToRender !== '') {
                 // not using innerHTML to prevent injection of HTML
                 // https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML#Security_considerations

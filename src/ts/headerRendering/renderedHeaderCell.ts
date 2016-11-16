@@ -63,7 +63,7 @@ export class RenderedHeaderCell implements IRenderedHeaderElement {
 
         this.createScope();
         this.addAttributes();
-        CssClassApplier.addHeaderClassesFromCollDef(this.column.getColDef(), this.eHeaderCell, this.gridOptionsWrapper, this.column, null);
+        CssClassApplier.addHeaderClassesFromColDef(this.column.getColDef(), this.eHeaderCell, this.gridOptionsWrapper, this.column, null);
 
         // label div
         var eHeaderCellLabel = <HTMLElement> this.eHeaderCell.querySelector('#agHeaderCellLabel');
@@ -253,6 +253,8 @@ export class RenderedHeaderCell implements IRenderedHeaderElement {
     }
 
     private setupTap(): void {
+
+        if (this.gridOptionsWrapper.isSuppressTouch()) { return; }
 
         let touchListener = new TouchListener(this.getGui());
         let tapListener = (touch: Touch)=> {

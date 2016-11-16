@@ -6,6 +6,7 @@ import {IViewportDatasource} from "../interfaces/iViewportDatasource";
 import {MenuItem} from "../widgets/menuItemComponent";
 import {ICellRendererFunc, ICellRenderer} from "../rendering/cellRenderers/iCellRenderer";
 import {IAggFunc, ColGroupDef, ColDef} from "./colDef";
+import {IDatasource} from "../rowControllers/iDatasource";
 
 /****************************************************************
  * Don't forget to update ComponentUtil if changing this class. *
@@ -17,12 +18,14 @@ export interface GridOptions {
      ****************************************************************/
 
     // set once in init, can never change
+    scrollbarWidth?: number;
     toolPanelSuppressRowGroups?: boolean;
     toolPanelSuppressValues?: boolean;
     toolPanelSuppressPivots?: boolean;
     toolPanelSuppressPivotMode?: boolean;
     suppressRowClickSelection?: boolean;
     suppressCellSelection?: boolean;
+    suppressRowHoverClass?: boolean;
     sortingOrder?: string[];
     suppressMultiSort?: boolean;
     suppressHorizontalScroll?: boolean;
@@ -87,6 +90,7 @@ export interface GridOptions {
     paginationInitialRowCount?: number;
     paginationPageSize?: number;
     editType?: string;
+    suppressTouch?: boolean;
 
     /****************************************************************
      * Don't forget to update ComponentUtil if changing this class. *
@@ -114,7 +118,7 @@ export interface GridOptions {
     groupSuppressRow?: boolean;
     groupSuppressBlankHeader?: boolean;
     forPrint?: boolean;
-    groupColumnDef?: any; // change to typed
+    groupColumnDef?: ColDef;
 
     /****************************************************************
      * Don't forget to update ComponentUtil if changing this class. *
@@ -143,8 +147,8 @@ export interface GridOptions {
     floatingTopRowData?: any[]; // should this be immutable ag2?
     floatingBottomRowData?: any[]; // should this be immutable ag2?
     showToolPanel?: boolean;
-    columnDefs?: any[]; // change to typed
-    datasource?: any; // should be typed
+    columnDefs?: (ColDef|ColGroupDef)[];
+    datasource?: IDatasource;
     viewportDatasource?: IViewportDatasource;
     // in properties
     headerHeight?: number;
@@ -182,6 +186,7 @@ export interface GridOptions {
     doesDataFlower?(dataItem: any): boolean;
     processRowPostCreate?(params: ProcessRowParams): void;
     processCellForClipboard?(params: ProcessCellForExportParams): any;
+    processCellFromClipboard?(params: ProcessCellForExportParams): any;
     processSecondaryColDef?(colDef: ColDef): void;
     processSecondaryColGroupDef?(colGroupDef: ColGroupDef): void;
 
@@ -222,6 +227,7 @@ export interface GridOptions {
     onCellDoubleClicked?(event?: any): void;
     onCellContextMenu?(event?: any): void;
     onCellValueChanged?(event?: any): void;
+    onRowValueChanged?(event?: any): void;
     onCellFocused?(event?: any): void;
     onRowSelected?(event?: any): void;
     onSelectionChanged?(event?: any): void;

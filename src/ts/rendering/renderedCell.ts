@@ -350,9 +350,10 @@ export class RenderedCell extends Component {
         this.addHighlightListener();
         this.addChangeListener();
         this.addCellFocusedListener();
-        this.addKeyDownListener();
-        this.addKeyPressListener();
-        this.addSuppressShortcutKeyListenersWhileEditing();
+
+        this.addDomData();
+
+        // this.addSuppressShortcutKeyListenersWhileEditing();
 
         var setLeftFeature = new SetLeftFeature(this.column, this.eGridCell);
         this.addDestroyFunc(setLeftFeature.destroy.bind(setLeftFeature));
@@ -367,6 +368,15 @@ export class RenderedCell extends Component {
         this.setInlineEditingClass();
         this.createParentOfValue();
         this.populateCell();
+    }
+
+    private addDomData(): void {
+        var domDataKey = this.gridOptionsWrapper.getDomDataKey();
+        var gridCellNoType = <any>this.eGridCell;
+        gridCellNoType[domDataKey] = {
+            renderedCell: this
+        };
+        this.addDestroyFunc( ()=> gridCellNoType[domDataKey] = null );
     }
 
     private onEnterKeyDown(): void {
@@ -436,38 +446,32 @@ export class RenderedCell extends Component {
         event.preventDefault();
     }
 
-    private addKeyPressListener(): void {
-        var keyPressListener = (event: KeyboardEvent)=> {
-            // check this, in case focus is on a (for example) a text field inside the cell,
-            // in which cse we should not be listening for these key pressed
-            var eventTarget = _.getTarget(event);
-            var eventOnChildComponent = eventTarget!==this.getGui();
-            if (eventOnChildComponent) { return; }
+    public onKeyPress(event: KeyboardEvent): void {
+        // check this, in case focus is on a (for example) a text field inside the cell,
+        // in which cse we should not be listening for these key pressed
+        var eventTarget = _.getTarget(event);
+        var eventOnChildComponent = eventTarget!==this.getGui();
+        if (eventOnChildComponent) { return; }
 
-            if (!this.editingCell) {
-                var pressedChar = String.fromCharCode(event.charCode);
-                if (pressedChar === ' ') {
-                    this.onSpaceKeyPressed(event);
-                } else {
-                    if (RenderedCell.PRINTABLE_CHARACTERS.indexOf(pressedChar)>=0) {
-                        this.startRowOrCellEdit(null, pressedChar);
-                        // if we don't prevent default, then the keypress also gets applied to the text field
-                        // (at least when doing the default editor), but we need to allow the editor to decide
-                        // what it wants to do. we only do this IF editing was started - otherwise it messes
-                        // up when the use is not doing editing, but using rendering with text fields in cellRenderer
-                        // (as it would block the the user from typing into text fields).
-                        event.preventDefault();
-                    }
+        if (!this.editingCell) {
+            var pressedChar = String.fromCharCode(event.charCode);
+            if (pressedChar === ' ') {
+                this.onSpaceKeyPressed(event);
+            } else {
+                if (RenderedCell.PRINTABLE_CHARACTERS.indexOf(pressedChar)>=0) {
+                    this.startRowOrCellEdit(null, pressedChar);
+                    // if we don't prevent default, then the keypress also gets applied to the text field
+                    // (at least when doing the default editor), but we need to allow the editor to decide
+                    // what it wants to do. we only do this IF editing was started - otherwise it messes
+                    // up when the use is not doing editing, but using rendering with text fields in cellRenderer
+                    // (as it would block the the user from typing into text fields).
+                    event.preventDefault();
                 }
             }
-        };
-        this.eGridCell.addEventListener('keypress', keyPressListener);
-        this.addDestroyFunc( () => {
-            this.eGridCell.removeEventListener('keypress', keyPressListener);
-        });
+        }
     }
 
-    private onKeyDown(event: KeyboardEvent): void {
+    public onKeyDown(event: KeyboardEvent): void {
         var key = event.which || event.keyCode;
 
         switch (key) {
@@ -494,14 +498,6 @@ export class RenderedCell extends Component {
                 this.onNavigationKeyPressed(event, key);
                 break;
         }
-    }
-
-    private addKeyDownListener(): void {
-        var editingKeyListener = this.onKeyDown.bind(this);
-        this.eGridCell.addEventListener('keydown', editingKeyListener);
-        this.addDestroyFunc( () => {
-            this.eGridCell.removeEventListener('keydown', editingKeyListener);
-        });
     }
 
     private createCellEditorParams(keyPress: number, charPress: string, cellStartedEdit: boolean): ICellEditorParams {
@@ -737,19 +733,6 @@ export class RenderedCell extends Component {
         return this.column.isCellEditable(this.node);
     }
 
-    private addSuppressShortcutKeyListenersWhileEditing(): void {
-        var keyDownListener = (event: any)=> {
-            if (this.editingCell) {
-                var metaKey = event.ctrlKey || event.metaKey;
-                var keyOfInterest = [Constants.KEY_A, Constants.KEY_C, Constants.KEY_V, Constants.KEY_D].indexOf(event.which) >= 0;
-                if (metaKey && keyOfInterest) {
-                    event.stopPropagation();
-                }
-            }
-        };
-        this.addDestroyableEventListener(this.eGridCell, 'keydown', keyDownListener);
-    }
-
     public onMouseEvent(eventName: string, mouseEvent: MouseEvent): void {
         switch (eventName) {
             case 'click': this.onCellClicked(mouseEvent); break;
@@ -830,6 +813,21 @@ export class RenderedCell extends Component {
 
         if (this.gridOptionsWrapper.isSingleClickEdit()) {
             this.startRowOrCellEdit();
+        }
+
+        this.doIeFocusHack();
+    }
+
+    // https://ag-grid.com/forum/showthread.php?tid=4362
+    // when in IE or Edge, when you are editing a cell, then click on another cell,
+    // the other cell doesn't keep focus, so navigation keys, type to start edit etc
+    // don't work. appears that when you update the dom in IE it looses focus
+    private doIeFocusHack(): void {
+        if (_.isBrowserIE() || _.isBrowserEdge()) {
+            if (_.missing(document.activeElement) || document.activeElement===document.body) {
+                // console.log('missing focus');
+                this.getGui().focus();
+            }
         }
     }
 
@@ -1067,7 +1065,8 @@ export class RenderedCell extends Component {
             this.useCellRenderer(cellRenderer, colDef.cellRendererParams, valueFormatted);
         } else {
             // if we insert undefined, then it displays as the string 'undefined', ugly!
-            var valueToRender = _.exists(valueFormatted) ? valueFormatted : this.value;
+            var valueFormattedExits = valueFormatted !== null && valueFormatted !== undefined;
+            var valueToRender = valueFormattedExits ? valueFormatted : this.value;
             if (_.exists(valueToRender) && valueToRender !== '') {
                 // not using innerHTML to prevent injection of HTML
                 // https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML#Security_considerations

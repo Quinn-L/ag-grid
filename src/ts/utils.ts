@@ -25,6 +25,7 @@ export class Utils {
     // unit tests and we don't have references to window or document in the unit tests
     private static isSafari: boolean;
     private static isIE: boolean;
+    private static isEdge: boolean;
 
     // returns true if the event is close to the original event by X pixels either vertically or horizontally.
     // we only start dragging after X pixels so this allows us to know if we should start dragging yet.
@@ -37,6 +38,23 @@ export class Utils {
         var diffY = Math.abs(e1.clientY - e2.clientY);
 
         return Math.max(diffX, diffY) <= pixelCount;
+    }
+
+    static shallowCompare(arr1: any[], arr2: any[]): boolean {
+        // if both are missing, then they are the same
+        if (this.missing(arr1) && this.missing(arr2)) { return true; }
+        // if one is present, but other is missing, then then are different
+        if (this.missing(arr1) || this.missing(arr2)) { return false; }
+
+        if (arr1.length!==arr2.length) { return false; }
+
+        for (let i = 0; i<arr1.length; i++) {
+            if (arr1[i]!==arr2[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     static getNameOfClass(TheClass: any) {
@@ -397,6 +415,15 @@ export class Utils {
         array.splice(toIndex, 0, object);
     }
 
+    static insertArrayIntoArray<T>(dest: T[], src: T[], toIndex: number) {
+        if (this.missing(dest) || this.missing(src)) { return; }
+        // put items in backwards, otherwise inserted items end up in reverse order
+        for (let i = src.length - 1; i>=0; i--) {
+            var item = src[i];
+            this.insertIntoArray(dest, item, toIndex);
+        }
+    }
+
     static moveInArray<T>(array: T[], objectsToMove: T[], toIndex: number) {
         // first take out it items from the array
         objectsToMove.forEach( (obj)=> {
@@ -495,11 +522,11 @@ export class Utils {
         return eResult;
     }
 
-    static createIconNoSpan(iconName: string, gridOptionsWrapper: GridOptionsWrapper, colDefWrapper: Column, svgFactoryFunc: () => HTMLElement): HTMLElement {
+    static createIconNoSpan(iconName: string, gridOptionsWrapper: GridOptionsWrapper, column: Column, svgFactoryFunc: () => HTMLElement): HTMLElement {
         var userProvidedIcon: Function | string;
         // check col for icon first
-        if (colDefWrapper && colDefWrapper.getColDef().icons) {
-            userProvidedIcon = colDefWrapper.getColDef().icons[iconName];
+        if (column && column.getColDef().icons) {
+            userProvidedIcon = column.getColDef().icons[iconName];
         }
         // it not in col, try grid options
         if (!userProvidedIcon && gridOptionsWrapper.getIcons()) {
@@ -590,6 +617,13 @@ export class Utils {
             this.isIE = /*@cc_on!@*/false || !!(<any>document).documentMode; // At least IE6
         }
         return this.isIE;
+    }
+
+    static isBrowserEdge(): boolean {
+        if (this.isEdge===undefined) {
+            this.isEdge = !this.isBrowserIE() && !!(<any>window).StyleMedia;
+        }
+        return this.isEdge;
     }
 
     static isBrowserSafari(): boolean {

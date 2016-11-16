@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v6.2.1
+ * @version v6.4.2
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -32,6 +32,25 @@ var Utils = (function () {
         var diffX = Math.abs(e1.clientX - e2.clientX);
         var diffY = Math.abs(e1.clientY - e2.clientY);
         return Math.max(diffX, diffY) <= pixelCount;
+    };
+    Utils.shallowCompare = function (arr1, arr2) {
+        // if both are missing, then they are the same
+        if (this.missing(arr1) && this.missing(arr2)) {
+            return true;
+        }
+        // if one is present, but other is missing, then then are different
+        if (this.missing(arr1) || this.missing(arr2)) {
+            return false;
+        }
+        if (arr1.length !== arr2.length) {
+            return false;
+        }
+        for (var i = 0; i < arr1.length; i++) {
+            if (arr1[i] !== arr2[i]) {
+                return false;
+            }
+        }
+        return true;
     };
     Utils.getNameOfClass = function (TheClass) {
         var funcNameRegex = /function (.{1,})\(/;
@@ -366,6 +385,16 @@ var Utils = (function () {
     Utils.insertIntoArray = function (array, object, toIndex) {
         array.splice(toIndex, 0, object);
     };
+    Utils.insertArrayIntoArray = function (dest, src, toIndex) {
+        if (this.missing(dest) || this.missing(src)) {
+            return;
+        }
+        // put items in backwards, otherwise inserted items end up in reverse order
+        for (var i = src.length - 1; i >= 0; i--) {
+            var item = src[i];
+            this.insertIntoArray(dest, item, toIndex);
+        }
+    };
     Utils.moveInArray = function (array, objectsToMove, toIndex) {
         var _this = this;
         // first take out it items from the array
@@ -459,11 +488,11 @@ var Utils = (function () {
         eResult.appendChild(this.createIconNoSpan(iconName, gridOptionsWrapper, column, svgFactoryFunc));
         return eResult;
     };
-    Utils.createIconNoSpan = function (iconName, gridOptionsWrapper, colDefWrapper, svgFactoryFunc) {
+    Utils.createIconNoSpan = function (iconName, gridOptionsWrapper, column, svgFactoryFunc) {
         var userProvidedIcon;
         // check col for icon first
-        if (colDefWrapper && colDefWrapper.getColDef().icons) {
-            userProvidedIcon = colDefWrapper.getColDef().icons[iconName];
+        if (column && column.getColDef().icons) {
+            userProvidedIcon = column.getColDef().icons[iconName];
         }
         // it not in col, try grid options
         if (!userProvidedIcon && gridOptionsWrapper.getIcons()) {
@@ -552,6 +581,12 @@ var Utils = (function () {
             this.isIE = false || !!document.documentMode; // At least IE6
         }
         return this.isIE;
+    };
+    Utils.isBrowserEdge = function () {
+        if (this.isEdge === undefined) {
+            this.isEdge = !this.isBrowserIE() && !!window.StyleMedia;
+        }
+        return this.isEdge;
     };
     Utils.isBrowserSafari = function () {
         if (this.isSafari === undefined) {
