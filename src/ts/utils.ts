@@ -103,13 +103,13 @@ export class Utils {
         }
     }
 
-    static cloneObject(object: any): any {
-        var copy = <any>{};
+    static cloneObject<T>(object: T): T {
+        var copy = <T>{};
         var keys = Object.keys(object);
         for (var i = 0; i < keys.length; i++) {
             var key = keys[i];
-            var value = object[key];
-            copy[key] = value;
+            var value = (<any>object)[key];
+            (<any>copy)[key] = value;
         }
         return copy;
     }
@@ -159,6 +159,11 @@ export class Utils {
                 object[key] = value;
             });
         }
+    }
+
+    static pushAll(target: any[], source: any[]): void {
+        if (this.missing(source) || this.missing(target)) { return; }
+        source.forEach( func => target.push(func) );
     }
 
     static getFunctionParameters(func: any) {
@@ -259,6 +264,10 @@ export class Utils {
 
     static missingOrEmpty(value: any[]|string): boolean {
         return this.missing(value) || value.length === 0;
+    }
+
+    static missingOrEmptyObject(value: any): boolean {
+        return this.missing(value) || Object.keys(value).length === 0;
     }
 
     static exists(value: any): boolean {
@@ -511,6 +520,22 @@ export class Utils {
             return '';
         }
     }
+
+    static prependDC(parent: HTMLElement, documentFragment: DocumentFragment): void {
+        if (this.exists(parent.firstChild)) {
+            parent.insertBefore(documentFragment, parent.firstChild);
+        } else {
+            parent.appendChild(documentFragment);
+        }
+    }
+
+    // static prepend(parent: HTMLElement, child: HTMLElement): void {
+    //     if (this.exists(parent.firstChild)) {
+    //         parent.insertBefore(child, parent.firstChild);
+    //     } else {
+    //         parent.appendChild(child);
+    //     }
+    // }
 
     /**
      * If icon provided, use this (either a string, or a function callback).
@@ -858,11 +883,17 @@ export class Utils {
 
 export class NumberSequence {
 
-    private nextValue = 0;
+    private nextValue: number;
+    private step: number;
+
+    constructor(initValue = 0, step = 1) {
+        this.nextValue = initValue;
+        this.step = step;
+    }
 
     public next() : number {
         var valToReturn = this.nextValue;
-        this.nextValue++;
+        this.nextValue += this.step;
         return valToReturn;
     }
 }

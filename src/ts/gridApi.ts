@@ -122,7 +122,7 @@ export class GridApi {
             // the enterprise implement it, rather than casting to 'any' here
             (<any>this.rowModel).setViewportDatasource(viewportDatasource);
         } else {
-            console.warn(`ag-Grid: you can only use a datasource when gridOptions.rowModelType is '${Constants.ROW_MODEL_TYPE_VIEWPORT}'`)
+            console.warn(`ag-Grid: you can only use a viewport datasource when gridOptions.rowModelType is '${Constants.ROW_MODEL_TYPE_VIEWPORT}'`)
         }
     }
     
@@ -172,7 +172,8 @@ export class GridApi {
     }
 
     public rowDataChanged(rows:any) {
-        this.rowRenderer.rowDataChanged(rows);
+        console.log('ag-Grid: rowDataChanged is deprecated, either call refreshView() to refresh everything, or call rowNode.setRowData(newData) to set value on a particular node')
+        this.refreshView();
     }
 
     public refreshView() {
@@ -212,14 +213,19 @@ export class GridApi {
         return this.rowModel;
     }
 
-    public onGroupExpandedOrCollapsed(refreshFromIndex?: any) {
-        if (_.missing(this.inMemoryRowModel)) { console.log('cannot call onGroupExpandedOrCollapsed unless using normal row model') }
-        this.inMemoryRowModel.refreshModel(Constants.STEP_MAP, refreshFromIndex);
+    public onGroupExpandedOrCollapsed(deprecated_refreshFromIndex?: any) {
+        if (_.missing(this.inMemoryRowModel)) { console.log('ag-Grid: cannot call onGroupExpandedOrCollapsed unless using normal row model') }
+        if (_.exists(deprecated_refreshFromIndex)) { console.log('ag-Grid: api.onGroupExpandedOrCollapsed - refreshFromIndex parameter is not longer used, the grid will refresh all rows'); }
+        // we don't really want the user calling this if one one rowNode was expanded, instead they should be
+        // calling rowNode.setExpanded(boolean) - this way we do a 'keepRenderedRows=false' so that the whole
+        // grid gets refreshed again - otherwise the row with the rowNodes that were changed won't get updated,
+        // and thus the expand icon in the group cell won't get 'opened' or 'closed'.
+        this.inMemoryRowModel.refreshModel({step: Constants.STEP_MAP});
     }
 
     public refreshInMemoryRowModel(): any {
         if (_.missing(this.inMemoryRowModel)) { console.log('cannot call refreshInMemoryRowModel unless using normal row model') }
-        this.inMemoryRowModel.refreshModel(Constants.STEP_EVERYTHING);
+        this.inMemoryRowModel.refreshModel({step: Constants.STEP_EVERYTHING});
     }
     
     public expandAll() {
@@ -298,7 +304,7 @@ export class GridApi {
 
     public recomputeAggregates(): void {
         if (_.missing(this.inMemoryRowModel)) { console.log('cannot call recomputeAggregates unless using normal row model') }
-        this.inMemoryRowModel.refreshModel(Constants.STEP_AGGREGATE);
+        this.inMemoryRowModel.refreshModel({step: Constants.STEP_AGGREGATE});
     }
 
     public sizeColumnsToFit() {
@@ -459,9 +465,28 @@ export class GridApi {
         this.gridCore.doLayout();
     }
 
+    public resetRowHeights() {
+        if (_.exists(this.inMemoryRowModel)) {
+            this.inMemoryRowModel.resetRowHeights();
+        }
+    }
+
+    public onRowHeightChanged() {
+        if (_.exists(this.inMemoryRowModel)) {
+            this.inMemoryRowModel.onRowHeightChanged();
+        }
+    }
+
     public getValue(colKey: string|ColDef|Column, rowNode: RowNode): any {
         var column = this.columnController.getPrimaryColumn(colKey);
-        return this.valueService.getValue(column, rowNode);
+        if (_.missing(column)) {
+            column = this.columnController.getGridColumn(colKey);
+        }
+        if (_.missing(column)) {
+            return null;
+        } else {
+            return this.valueService.getValue(column, rowNode);
+        }
     }
 
     public addEventListener(eventType: string, listener: Function): void {
@@ -535,6 +560,14 @@ export class GridApi {
     public showColumnMenuAfterMouseClick(colKey: string|Column|ColDef, mouseEvent: MouseEvent|Touch): void {
         var column = this.columnController.getPrimaryColumn(colKey);
         this.menuFactory.showMenuAfterMouseEvent(column, mouseEvent);
+    }
+
+    public tabToNextCell(): boolean {
+        return this.rowRenderer.tabToNextCell(false);
+    }
+
+    public tabToPreviousCell(): boolean {
+        return this.rowRenderer.tabToNextCell(true);
     }
 
     public stopEditing(cancel: boolean = false): void {

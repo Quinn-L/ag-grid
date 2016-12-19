@@ -188,13 +188,6 @@
 .ag-bootstrap .ag-body {
   background-color: #f6f6f6;
 }
-.ag-bootstrap .ag-row {
-  -webkit-transition: background-color 0.1s;
-  -moz-transition: background-color 0.1s;
-  -o-transition: background-color 0.1s;
-  -ms-transition: background-color 0.1s;
-  transition: background-color 0.1s;
-}
 .ag-bootstrap .ag-row-odd {
   background-color: #f6f6f6;
 }

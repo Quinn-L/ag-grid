@@ -30,8 +30,8 @@ export class ColumnApi {
     public setColumnGroupOpened(group: ColumnGroup|string, newValue: boolean, instanceId?: number): void { this._columnController.setColumnGroupOpened(group, newValue, instanceId); }
     public getColumnGroup(name: string, instanceId?: number): ColumnGroup { return this._columnController.getColumnGroup(name, instanceId); }
 
-    public getDisplayNameForColumn(column: Column): string { return this._columnController.getDisplayNameForColumn(column); }
-    public getDisplayNameForColumnGroup(columnGroup: ColumnGroup): string { return this._columnController.getDisplayNameForColumnGroup(columnGroup); }
+    public getDisplayNameForColumn(column: Column, location: string): string { return this._columnController.getDisplayNameForColumn(column, location); }
+    public getDisplayNameForColumnGroup(columnGroup: ColumnGroup, location: string): string { return this._columnController.getDisplayNameForColumnGroup(columnGroup, location); }
 
     public getColumn(key: any): Column { return this._columnController.getPrimaryColumn(key); }
     public setColumnState(columnState: any): boolean { return this._columnController.setColumnState(columnState); }
@@ -55,9 +55,20 @@ export class ColumnApi {
     public getAllDisplayedColumns(): Column[] { return this._columnController.getAllDisplayedColumns(); }
     public getAllDisplayedVirtualColumns(): Column[] { return this._columnController.getAllDisplayedVirtualColumns(); }
 
-    public moveColumn(fromIndex: number, toIndex: number): void { this._columnController.moveColumnByIndex(fromIndex, toIndex); }
+    public moveColumn(key: string|Column|ColDef, toIndex: number): void {
+        if (typeof key === 'number') {
+            // moveColumn used to take indexes, so this is advising user who hasn't moved to new method name
+            console.log('ag-Grid: you are using moveColumn(fromIndex, toIndex) - moveColumn takes a column key and a destination index, not two indexes, to move with indexes use moveColumnByIndex(from,to) instead');
+            this._columnController.moveColumnByIndex(<number>key, toIndex);
+        } else {
+            this._columnController.moveColumn(key, toIndex);
+        }
+    }
+    public moveColumnByIndex(fromIndex: number, toIndex: number): void { this._columnController.moveColumnByIndex(fromIndex, toIndex); }
+    public moveColumns(columnsToMoveKeys: (Column|ColDef|String)[], toIndex: number) { this._columnController.moveColumns(columnsToMoveKeys, toIndex); }
+
     public moveRowGroupColumn(fromIndex: number, toIndex: number): void { this._columnController.moveRowGroupColumn(fromIndex, toIndex); }
-    public setColumnAggFunct(column: Column, aggFunc: string): void { this._columnController.setColumnAggFunc(column, aggFunc); }
+    public setColumnAggFunc(column: Column, aggFunc: string): void { this._columnController.setColumnAggFunc(column, aggFunc); }
     public setColumnWidth(key: Column | string | ColDef, newWidth: number, finished: boolean = true): void { this._columnController.setColumnWidth(key, newWidth, finished); }
     public setPivotMode(pivotMode: boolean): void { this._columnController.setPivotMode(pivotMode); }
     public isPivotMode(): boolean { return this._columnController.isPivotMode(); }
@@ -154,7 +165,7 @@ export class ColumnApi {
 
     public getDisplayNameForCol(column: any): string {
         console.error('ag-Grid: getDisplayNameForCol is deprecated, use getDisplayNameForColumn');
-        return this.getDisplayNameForColumn(column);
+        return this.getDisplayNameForColumn(column, null);
     }
 
 }
@@ -248,6 +259,17 @@ export class ColumnController {
     private setViewportLeftAndRight(): void {
         this.viewportLeft = this.scrollPosition;
         this.viewportRight = this.totalWidth + this.scrollPosition;
+    }
+
+    // used by clipboard service, to know what columns to paste into
+    public getDisplayedColumnsStartingAt(column: Column): Column[] {
+        let currentColumn = column;
+        let result: Column[] = [];
+        while (_.exists(currentColumn)) {
+            result.push(currentColumn);
+            currentColumn = this.getDisplayedColAfter(currentColumn);
+        }
+        return result;
     }
 
     private checkDisplayedCenterColumns(): void {
@@ -1167,8 +1189,8 @@ export class ColumnController {
         return null;
     }
 
-    public getDisplayNameForColumn(column: Column, includeAggFunc = false): string {
-        var headerName = this.getHeaderName(column.getColDef(), column, null);
+    public getDisplayNameForColumn(column: Column, location: string, includeAggFunc = false): string {
+        var headerName = this.getHeaderName(column.getColDef(), column, null, location);
         if (includeAggFunc) {
             return this.wrapHeaderNameWithAggFunc(column, headerName);
         } else {
@@ -1176,16 +1198,17 @@ export class ColumnController {
         }
     }
 
-    public getDisplayNameForColumnGroup(columnGroup: ColumnGroup): string {
+    public getDisplayNameForColumnGroup(columnGroup: ColumnGroup, location: string): string {
         var colGroupDef = columnGroup.getOriginalColumnGroup().getColGroupDef();
         if (colGroupDef) {
-            return this.getHeaderName(colGroupDef, null, columnGroup);
+            return this.getHeaderName(colGroupDef, null, columnGroup, location);
         } else {
             return null;
         }
     }
 
-    private getHeaderName(colDef: AbstractColDef, column: Column, columnGroup: ColumnGroup): string {
+    // location is where the column is going to appear, ie who is calling us
+    private getHeaderName(colDef: AbstractColDef, column: Column, columnGroup: ColumnGroup, location: string): string {
         var headerValueGetter = colDef.headerValueGetter;
 
         if (headerValueGetter) {
@@ -1193,6 +1216,7 @@ export class ColumnController {
                 colDef: colDef,
                 column: column,
                 columnGroup: columnGroup,
+                location: location,
                 api: this.gridOptionsWrapper.getApi(),
                 context: this.gridOptionsWrapper.getContext()
             };

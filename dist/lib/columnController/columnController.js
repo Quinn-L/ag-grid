@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v6.4.2
+ * @version v7.0.2
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -40,8 +40,8 @@ var ColumnApi = (function () {
     ColumnApi.prototype.sizeColumnsToFit = function (gridWidth) { this._columnController.sizeColumnsToFit(gridWidth); };
     ColumnApi.prototype.setColumnGroupOpened = function (group, newValue, instanceId) { this._columnController.setColumnGroupOpened(group, newValue, instanceId); };
     ColumnApi.prototype.getColumnGroup = function (name, instanceId) { return this._columnController.getColumnGroup(name, instanceId); };
-    ColumnApi.prototype.getDisplayNameForColumn = function (column) { return this._columnController.getDisplayNameForColumn(column); };
-    ColumnApi.prototype.getDisplayNameForColumnGroup = function (columnGroup) { return this._columnController.getDisplayNameForColumnGroup(columnGroup); };
+    ColumnApi.prototype.getDisplayNameForColumn = function (column, location) { return this._columnController.getDisplayNameForColumn(column, location); };
+    ColumnApi.prototype.getDisplayNameForColumnGroup = function (columnGroup, location) { return this._columnController.getDisplayNameForColumnGroup(columnGroup, location); };
     ColumnApi.prototype.getColumn = function (key) { return this._columnController.getPrimaryColumn(key); };
     ColumnApi.prototype.setColumnState = function (columnState) { return this._columnController.setColumnState(columnState); };
     ColumnApi.prototype.getColumnState = function () { return this._columnController.getColumnState(); };
@@ -62,9 +62,20 @@ var ColumnApi = (function () {
     ColumnApi.prototype.getDisplayedRightColumns = function () { return this._columnController.getDisplayedRightColumns(); };
     ColumnApi.prototype.getAllDisplayedColumns = function () { return this._columnController.getAllDisplayedColumns(); };
     ColumnApi.prototype.getAllDisplayedVirtualColumns = function () { return this._columnController.getAllDisplayedVirtualColumns(); };
-    ColumnApi.prototype.moveColumn = function (fromIndex, toIndex) { this._columnController.moveColumnByIndex(fromIndex, toIndex); };
+    ColumnApi.prototype.moveColumn = function (key, toIndex) {
+        if (typeof key === 'number') {
+            // moveColumn used to take indexes, so this is advising user who hasn't moved to new method name
+            console.log('ag-Grid: you are using moveColumn(fromIndex, toIndex) - moveColumn takes a column key and a destination index, not two indexes, to move with indexes use moveColumnByIndex(from,to) instead');
+            this._columnController.moveColumnByIndex(key, toIndex);
+        }
+        else {
+            this._columnController.moveColumn(key, toIndex);
+        }
+    };
+    ColumnApi.prototype.moveColumnByIndex = function (fromIndex, toIndex) { this._columnController.moveColumnByIndex(fromIndex, toIndex); };
+    ColumnApi.prototype.moveColumns = function (columnsToMoveKeys, toIndex) { this._columnController.moveColumns(columnsToMoveKeys, toIndex); };
     ColumnApi.prototype.moveRowGroupColumn = function (fromIndex, toIndex) { this._columnController.moveRowGroupColumn(fromIndex, toIndex); };
-    ColumnApi.prototype.setColumnAggFunct = function (column, aggFunc) { this._columnController.setColumnAggFunc(column, aggFunc); };
+    ColumnApi.prototype.setColumnAggFunc = function (column, aggFunc) { this._columnController.setColumnAggFunc(column, aggFunc); };
     ColumnApi.prototype.setColumnWidth = function (key, newWidth, finished) {
         if (finished === void 0) { finished = true; }
         this._columnController.setColumnWidth(key, newWidth, finished);
@@ -149,7 +160,7 @@ var ColumnApi = (function () {
     };
     ColumnApi.prototype.getDisplayNameForCol = function (column) {
         console.error('ag-Grid: getDisplayNameForCol is deprecated, use getDisplayNameForColumn');
-        return this.getDisplayNameForColumn(column);
+        return this.getDisplayNameForColumn(column, null);
     };
     __decorate([
         context_1.Autowired('columnController'), 
@@ -194,6 +205,16 @@ var ColumnController = (function () {
     ColumnController.prototype.setViewportLeftAndRight = function () {
         this.viewportLeft = this.scrollPosition;
         this.viewportRight = this.totalWidth + this.scrollPosition;
+    };
+    // used by clipboard service, to know what columns to paste into
+    ColumnController.prototype.getDisplayedColumnsStartingAt = function (column) {
+        var currentColumn = column;
+        var result = [];
+        while (utils_1.Utils.exists(currentColumn)) {
+            result.push(currentColumn);
+            currentColumn = this.getDisplayedColAfter(currentColumn);
+        }
+        return result;
     };
     ColumnController.prototype.checkDisplayedCenterColumns = function () {
         // check displayCenterColumnTree exists first, as it won't exist when grid is initialising
@@ -972,9 +993,9 @@ var ColumnController = (function () {
         }
         return null;
     };
-    ColumnController.prototype.getDisplayNameForColumn = function (column, includeAggFunc) {
+    ColumnController.prototype.getDisplayNameForColumn = function (column, location, includeAggFunc) {
         if (includeAggFunc === void 0) { includeAggFunc = false; }
-        var headerName = this.getHeaderName(column.getColDef(), column, null);
+        var headerName = this.getHeaderName(column.getColDef(), column, null, location);
         if (includeAggFunc) {
             return this.wrapHeaderNameWithAggFunc(column, headerName);
         }
@@ -982,22 +1003,24 @@ var ColumnController = (function () {
             return headerName;
         }
     };
-    ColumnController.prototype.getDisplayNameForColumnGroup = function (columnGroup) {
+    ColumnController.prototype.getDisplayNameForColumnGroup = function (columnGroup, location) {
         var colGroupDef = columnGroup.getOriginalColumnGroup().getColGroupDef();
         if (colGroupDef) {
-            return this.getHeaderName(colGroupDef, null, columnGroup);
+            return this.getHeaderName(colGroupDef, null, columnGroup, location);
         }
         else {
             return null;
         }
     };
-    ColumnController.prototype.getHeaderName = function (colDef, column, columnGroup) {
+    // location is where the column is going to appear, ie who is calling us
+    ColumnController.prototype.getHeaderName = function (colDef, column, columnGroup, location) {
         var headerValueGetter = colDef.headerValueGetter;
         if (headerValueGetter) {
             var params = {
                 colDef: colDef,
                 column: column,
                 columnGroup: columnGroup,
+                location: location,
                 api: this.gridOptionsWrapper.getApi(),
                 context: this.gridOptionsWrapper.getContext()
             };

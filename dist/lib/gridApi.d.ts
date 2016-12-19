@@ -1,7 +1,6 @@
-// Type definitions for ag-grid v6.4.2
+// Type definitions for ag-grid v7.0.2
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
-// Definitions: https://github.com/borisyankov/DefinitelyTyped
 import { CsvExportParams } from "./csvCreator";
 import { MasterSlaveService } from "./masterSlaveService";
 import { ColDef, IAggFunc, ColGroupDef } from "./entities/colDef";
@@ -74,7 +73,7 @@ export declare class GridApi {
     isAdvancedFilterPresent(): boolean;
     isQuickFilterPresent(): boolean;
     getModel(): IRowModel;
-    onGroupExpandedOrCollapsed(refreshFromIndex?: any): void;
+    onGroupExpandedOrCollapsed(deprecated_refreshFromIndex?: any): void;
     refreshInMemoryRowModel(): any;
     expandAll(): void;
     collapseAll(): void;
@@ -127,6 +126,8 @@ export declare class GridApi {
     showToolPanel(show: any): void;
     isToolPanelShowing(): boolean;
     doLayout(): void;
+    resetRowHeights(): void;
+    onRowHeightChanged(): void;
     getValue(colKey: string | ColDef | Column, rowNode: RowNode): any;
     addEventListener(eventType: string, listener: Function): void;
     addGlobalListener(listener: Function): void;
@@ -143,6 +144,8 @@ export declare class GridApi {
     copySelectedRangeDown(): void;
     showColumnMenuAfterButtonClick(colKey: string | Column | ColDef, buttonElement: HTMLElement): void;
     showColumnMenuAfterMouseClick(colKey: string | Column | ColDef, mouseEvent: MouseEvent | Touch): void;
+    tabToNextCell(): boolean;
+    tabToPreviousCell(): boolean;
     stopEditing(cancel?: boolean): void;
     startEditingCell(params: StartEditingCellParams): void;
     addAggFunc(key: string, aggFunc: IAggFunc): void;

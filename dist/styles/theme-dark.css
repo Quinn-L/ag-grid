@@ -188,13 +188,6 @@
 .ag-dark .ag-body {
   background-color: #302e2e;
 }
-.ag-dark .ag-row {
-  -webkit-transition: background-color 0.1s;
-  -moz-transition: background-color 0.1s;
-  -o-transition: background-color 0.1s;
-  -ms-transition: background-color 0.1s;
-  transition: background-color 0.1s;
-}
 .ag-dark .ag-row-odd {
   background-color: #302e2e;
 }

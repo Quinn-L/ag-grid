@@ -175,6 +175,14 @@ export class GridPanel {
         this.findElements();
     }
 
+    public getBodyTopPixel(): number {
+        return this.eBodyViewport.scrollTop;
+    }
+
+    public getBodyBottomPixel(): number {
+        return this.eBodyViewport.scrollTop + this.eBodyViewport.offsetHeight
+    }
+
     private setScrollBarWidth(): void {
         // the user might be using some non-standard scrollbar, eg a scrollbar that has zero
         // width and overlays (like the Safari scrollbar, but presented in Chrome). so we
@@ -646,12 +654,12 @@ export class GridPanel {
         if (viewportScrolledPastRow) {
             // if row is before, scroll up with row at top
             eViewportToScroll.scrollTop = rowTopPixel;
-            this.rowRenderer.drawVirtualRows();
+            this.rowRenderer.drawVirtualRowsWithLock();
         } else if (viewportScrolledBeforeRow) {
             // if row is below, scroll down with row at bottom
             var newScrollPosition = rowBottomPixel - viewportHeight;
             eViewportToScroll.scrollTop = newScrollPosition;
-            this.rowRenderer.drawVirtualRows();
+            this.rowRenderer.drawVirtualRowsWithLock();
         }
         // otherwise, row is already in view, so do nothing
     }
@@ -960,8 +968,9 @@ export class GridPanel {
             this.eFloatingBottomViewport = this.queryHtmlElement('.ag-floating-bottom-viewport');
             this.eFloatingBottomFullWidthCellContainer = this.queryHtmlElement('.ag-floating-bottom-full-width-container');
 
-            this.eAllCellContainers = [this.ePinnedLeftColsContainer, this.ePinnedRightColsContainer, this.eBodyContainer,
-                this.eFloatingTop, this.eFloatingBottom];
+            this.eAllCellContainers = [
+                this.ePinnedLeftColsContainer, this.ePinnedRightColsContainer, this.eBodyContainer,
+                this.eFloatingTop, this.eFloatingBottom, this.eFullWidthCellContainer];
 
             this.addMouseWheelEventListeners();
         }
@@ -1206,7 +1215,7 @@ export class GridPanel {
                     that.lastTopPosition = newTopPosition;
                     that.verticallyScrollLeftPinned(newTopPosition);
                     that.verticallyScrollFullWidthCellContainer(newTopPosition);
-                    that.rowRenderer.drawVirtualRows();
+                    that.rowRenderer.drawVirtualRowsWithLock();
                 }
             }
         }
@@ -1219,7 +1228,7 @@ export class GridPanel {
                 that.verticallyScrollLeftPinned(newTopPosition);
                 that.verticallyScrollFullWidthCellContainer(newTopPosition);
                 that.verticallyScrollBody(newTopPosition);
-                that.rowRenderer.drawVirtualRows();
+                that.rowRenderer.drawVirtualRowsWithLock();
             }
         }
 
