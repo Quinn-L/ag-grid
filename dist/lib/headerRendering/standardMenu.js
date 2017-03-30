@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var context_1 = require("../context/context");
 var filterManager_1 = require("../filter/filterManager");
 var utils_1 = require("../utils");
@@ -43,8 +45,12 @@ var StandardMenuFactory = (function () {
         var eMenu = document.createElement('div');
         utils_1.Utils.addCssClass(eMenu, 'ag-menu');
         eMenu.appendChild(filterWrapper.gui);
-        var bodyScrollListener = function () {
-            hidePopup();
+        var hidePopup;
+        var bodyScrollListener = function (event) {
+            // if h scroll, popup is no longer over the column
+            if (event.direction === 'horizontal') {
+                hidePopup();
+            }
         };
         this.eventService.addEventListener('bodyScroll', bodyScrollListener);
         var closedCallback = function () {
@@ -52,7 +58,7 @@ var StandardMenuFactory = (function () {
         };
         // need to show filter before positioning, as only after filter
         // is visible can we find out what the width of it is
-        var hidePopup = this.popupService.addAsModalPopup(eMenu, true, closedCallback);
+        hidePopup = this.popupService.addAsModalPopup(eMenu, true, closedCallback);
         positionCallback(eMenu);
         if (filterWrapper.filter.afterGuiAttached) {
             var params = {
@@ -65,26 +71,25 @@ var StandardMenuFactory = (function () {
         // for standard, we show menu if filter is enabled, and he menu is not suppressed
         return this.gridOptionsWrapper.isEnableFilter() && column.isFilterAllowed();
     };
-    __decorate([
-        context_1.Autowired('eventService'), 
-        __metadata('design:type', eventService_1.EventService)
-    ], StandardMenuFactory.prototype, "eventService", void 0);
-    __decorate([
-        context_1.Autowired('filterManager'), 
-        __metadata('design:type', filterManager_1.FilterManager)
-    ], StandardMenuFactory.prototype, "filterManager", void 0);
-    __decorate([
-        context_1.Autowired('popupService'), 
-        __metadata('design:type', popupService_1.PopupService)
-    ], StandardMenuFactory.prototype, "popupService", void 0);
-    __decorate([
-        context_1.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], StandardMenuFactory.prototype, "gridOptionsWrapper", void 0);
-    StandardMenuFactory = __decorate([
-        context_1.Bean('menuFactory'), 
-        __metadata('design:paramtypes', [])
-    ], StandardMenuFactory);
     return StandardMenuFactory;
-})();
+}());
+__decorate([
+    context_1.Autowired('eventService'),
+    __metadata("design:type", eventService_1.EventService)
+], StandardMenuFactory.prototype, "eventService", void 0);
+__decorate([
+    context_1.Autowired('filterManager'),
+    __metadata("design:type", filterManager_1.FilterManager)
+], StandardMenuFactory.prototype, "filterManager", void 0);
+__decorate([
+    context_1.Autowired('popupService'),
+    __metadata("design:type", popupService_1.PopupService)
+], StandardMenuFactory.prototype, "popupService", void 0);
+__decorate([
+    context_1.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], StandardMenuFactory.prototype, "gridOptionsWrapper", void 0);
+StandardMenuFactory = __decorate([
+    context_1.Bean('menuFactory')
+], StandardMenuFactory);
 exports.StandardMenuFactory = StandardMenuFactory;

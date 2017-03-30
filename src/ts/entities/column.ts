@@ -13,8 +13,8 @@ import {Autowired, PostConstruct} from "../context/context";
 import {GridOptionsWrapper} from "../gridOptionsWrapper";
 import {ColumnUtils} from "../columnController/columnUtils";
 import {RowNode} from "./rowNode";
-import {ICellRenderer, ICellRendererFunc} from "../rendering/cellRenderers/iCellRenderer";
-import {ICellEditor} from "../rendering/cellEditors/iCellEditor";
+import {ICellRenderer, ICellRendererFunc, ICellRendererComp} from "../rendering/cellRenderers/iCellRenderer";
+import {ICellEditorComp} from "../rendering/cellEditors/iCellEditor";
 import {IFilter} from "../interfaces/iFilter";
 import {IFrameworkFactory} from "../interfaces/iFrameworkFactory";
 
@@ -37,8 +37,10 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     public static EVENT_FIRST_RIGHT_PINNED_CHANGED = 'firstRightPinnedChanged';
     // + renderedColumn - for changing visibility icon
     public static EVENT_VISIBLE_CHANGED = 'visibleChanged';
-    // + renderedHeaderCell - marks the header with filter icon
+    // + every time the filter changes, used in the floating filters
     public static EVENT_FILTER_CHANGED = 'filterChanged';
+    // + renderedHeaderCell - marks the header with filter icon
+    public static EVENT_FILTER_ACTIVE_CHANGED = 'filterActiveChanged';
     // + renderedHeaderCell - marks the header with sort icon
     public static EVENT_SORT_CHANGED = 'sortChanged';
 
@@ -67,6 +69,7 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     private visible: any;
     private pinned: string;
     private left: number;
+    private oldLeft: number;
     private aggFunc: string | IAggFunc;
     private sort: string;
     private sortedAt: number;
@@ -91,9 +94,9 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
 
     private primary: boolean;
 
-    private cellRenderer: {new(): ICellRenderer} | ICellRendererFunc | string;
-    private floatingCellRenderer: {new(): ICellRenderer} | ICellRendererFunc | string;
-    private cellEditor: {new(): ICellEditor} | string;
+    private cellRenderer: {new(): ICellRendererComp} | ICellRendererFunc | string;
+    private floatingCellRenderer: {new(): ICellRendererComp} | ICellRendererFunc | string;
+    private cellEditor: {new(): ICellEditorComp} | string;
     private filter: {new(): IFilter} | string;
 
     private parent: ColumnGroupChild;
@@ -149,15 +152,15 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
         this.validate();
     }
 
-    public getCellRenderer(): {new(): ICellRenderer} | ICellRendererFunc | string {
+    public getCellRenderer(): {new(): ICellRendererComp} | ICellRendererFunc | string {
         return this.cellRenderer;
     }
 
-    public getCellEditor(): {new(): ICellEditor} | string {
+    public getCellEditor(): {new(): ICellEditorComp} | string {
         return this.cellEditor;
     }
 
-    public getFloatingCellRenderer(): {new(): ICellRenderer} | ICellRendererFunc | string {
+    public getFloatingCellRenderer(): {new(): ICellRendererComp} | ICellRendererFunc | string {
         return this.floatingCellRenderer;
     }
 
@@ -282,6 +285,10 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
         return _.missing(this.sort);
     }
 
+    public isSorting(): boolean {
+        return _.exists(this.sort);
+    }
+
     public getSortedAt(): number {
         return this.sortedAt;
     }
@@ -302,11 +309,16 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
         return this.left;
     }
 
+    public getOldLeft(): number {
+        return this.oldLeft;
+    }
+
     public getRight(): number {
         return this.left + this.actualWidth;
     }
 
     public setLeft(left: number) {
+        this.oldLeft = this.left;
         if (this.left !== left) {
             this.left = left;
             this.eventService.dispatchEvent(Column.EVENT_LEFT_CHANGED);
@@ -320,8 +332,9 @@ export class Column implements ColumnGroupChild, OriginalColumnGroupChild {
     public setFilterActive(active: boolean): void {
         if (this.filterActive !== active) {
             this.filterActive = active;
-            this.eventService.dispatchEvent(Column.EVENT_FILTER_CHANGED);
+            this.eventService.dispatchEvent(Column.EVENT_FILTER_ACTIVE_CHANGED);
         }
+        this.eventService.dispatchEvent(Column.EVENT_FILTER_CHANGED);
     }
 
     public setPinned(pinned: string|boolean): void {

@@ -1,22 +1,30 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
 var utils_1 = require("../../utils");
 var component_1 = require("../../widgets/component");
 var AnimateSlideCellRenderer = (function (_super) {
     __extends(AnimateSlideCellRenderer, _super);
     function AnimateSlideCellRenderer() {
-        _super.call(this, AnimateSlideCellRenderer.TEMPLATE);
-        this.refreshCount = 0;
-        this.eCurrent = this.queryForHtmlElement('.ag-value-slide-current');
+        var _this = _super.call(this, AnimateSlideCellRenderer.TEMPLATE) || this;
+        _this.refreshCount = 0;
+        _this.eCurrent = _this.queryForHtmlElement('.ag-value-slide-current');
+        return _this;
     }
     AnimateSlideCellRenderer.prototype.init = function (params) {
         this.params = params;
@@ -73,9 +81,9 @@ var AnimateSlideCellRenderer = (function (_super) {
             this.eCurrent.innerHTML = '';
         }
     };
-    AnimateSlideCellRenderer.TEMPLATE = '<span>' +
-        '<span class="ag-value-slide-current"></span>' +
-        '</span>';
     return AnimateSlideCellRenderer;
-})(component_1.Component);
+}(component_1.Component));
+AnimateSlideCellRenderer.TEMPLATE = '<span>' +
+    '<span class="ag-value-slide-current"></span>' +
+    '</span>';
 exports.AnimateSlideCellRenderer = AnimateSlideCellRenderer;

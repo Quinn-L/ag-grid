@@ -6,9 +6,11 @@ import {ColumnController} from "../columnController/columnController";
 import {GridPanel} from "../gridPanel/gridPanel";
 import {EventService} from "../eventService";
 import {Events} from "../events";
-import {HeaderRowComp} from "./headerRowComp";
+import {HeaderRowComp, HeaderRowType} from "./headerRowComp";
 import {BodyDropTarget} from "./bodyDropTarget";
-import {IRenderedHeaderElement} from "./iRenderedHeaderElement";
+import {Column} from "../entities/column";
+import {ScrollVisibleService} from "../gridPanel/scrollVisibleService";
+import {Component} from "../widgets/component";
 
 export class HeaderContainer {
 
@@ -19,6 +21,7 @@ export class HeaderContainer {
     @Autowired('columnController') private columnController: ColumnController;
     @Autowired('gridPanel') private gridPanel: GridPanel;
     @Autowired('eventService') private eventService: EventService;
+    @Autowired('scrollVisibleService') private scrollVisibleService: ScrollVisibleService;
 
     private eContainer: HTMLElement;
     private eViewport: HTMLElement;
@@ -37,21 +40,55 @@ export class HeaderContainer {
         this.eViewport = eViewport;
     }
 
-    public setWidth(width: number): void {
-        this.eContainer.style.width = width + 'px';
-    }
-    
-    public forEachHeaderElement(callback: (renderedHeaderElement: IRenderedHeaderElement)=>void): void {
+    public forEachHeaderElement(callback: (renderedHeaderElement: Component)=>void): void {
         this.headerRowComps.forEach( headerRowComp => headerRowComp.forEachHeaderElement(callback) );
     }
-    
+
     @PostConstruct
     private init(): void {
         this.setupDragAndDrop();
         // if value changes, then if not pivoting, we at least need to change the label eg from sum() to avg(),
         // if pivoting, then the columns have changed
-        this.eventService.addEventListener(Events.EVENT_COLUMN_VALUE_CHANGED, this.onGridColumnsChanged.bind(this));
+        this.eventService.addEventListener(Events.EVENT_COLUMN_VALUE_CHANGED, this.onColumnValueChanged.bind(this));
+        this.eventService.addEventListener(Events.EVENT_COLUMN_ROW_GROUP_CHANGED, this.onColumnRowGroupChanged.bind(this));
         this.eventService.addEventListener(Events.EVENT_GRID_COLUMNS_CHANGED, this.onGridColumnsChanged.bind(this));
+        this.eventService.addEventListener(Events.EVENT_SCROLL_VISIBILITY_CHANGED, this.onScrollVisibilityChanged.bind(this));
+
+        this.eventService.addEventListener(Events.EVENT_COLUMN_RESIZED, this.onColumnResized.bind(this));
+        this.eventService.addEventListener(Events.EVENT_DISPLAYED_COLUMNS_CHANGED, this.onDisplayedColumnsChanged.bind(this));
+    }
+
+    // if row group changes, that means we may need to add aggFunc's to the column headers,
+    // if the grid goes from no aggregation (ie no grouping) to grouping
+    private onColumnRowGroupChanged(): void {
+        this.onGridColumnsChanged();
+    }
+
+    // if the agg func of a column changes, then we may need to update the agg func in columns header
+    private onColumnValueChanged(): void {
+        this.onGridColumnsChanged();
+    }
+
+    private onColumnResized(): void {
+        this.setWidthIfPinnedContainer();
+    }
+
+    private onDisplayedColumnsChanged(): void {
+        this.setWidthIfPinnedContainer();
+    }
+
+    private onScrollVisibilityChanged(): void {
+        this.setWidthIfPinnedContainer();
+    }
+
+    private setWidthIfPinnedContainer(): void {
+        if (this.pinned === Column.PINNED_LEFT) {
+            let pinnedLeftWidthWithScroll = this.scrollVisibleService.getPinnedLeftWithScrollWidth();
+            this.eContainer.style.width = pinnedLeftWidthWithScroll + 'px';
+        } else if (this.pinned === Column.PINNED_RIGHT) {
+            let pinnedRightWidthWithScroll = this.scrollVisibleService.getPinnedRightWithScrollWidth();
+            this.eContainer.style.width = pinnedRightWidthWithScroll + 'px';
+        }
     }
 
     public destroy(): void {
@@ -91,7 +128,17 @@ export class HeaderContainer {
         
         for (var dept = 0; dept<rowCount; dept++) {
             var groupRow = dept !== (rowCount - 1);
-            var headerRowComp = new HeaderRowComp(dept, groupRow, this.pinned, this.eRoot, this.dropTarget);
+            let type = groupRow ? HeaderRowType.COLUMN_GROUP : HeaderRowType.COLUMN;
+            var headerRowComp = new HeaderRowComp(dept, type, this.pinned, this.eRoot, this.dropTarget);
+            this.context.wireBean(headerRowComp);
+            this.headerRowComps.push(headerRowComp);
+            this.eContainer.appendChild(headerRowComp.getGui());
+        }
+
+        let includeFloatingFilterRow = this.gridOptionsWrapper.isFloatingFilter() && !this.columnController.isPivotMode();
+
+        if (includeFloatingFilterRow) {
+            var headerRowComp = new HeaderRowComp(rowCount, HeaderRowType.FLOATING_FILTER, this.pinned, this.eRoot, this.dropTarget);
             this.context.wireBean(headerRowComp);
             this.headerRowComps.push(headerRowComp);
             this.eContainer.appendChild(headerRowComp.getGui());

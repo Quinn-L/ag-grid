@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var context_1 = require("./context/context");
 var context_2 = require("./context/context");
 var TemplateService = (function () {
@@ -72,14 +74,13 @@ var TemplateService = (function () {
             }, 0);
         }
     };
-    __decorate([
-        context_2.Autowired('$scope'), 
-        __metadata('design:type', Object)
-    ], TemplateService.prototype, "$scope", void 0);
-    TemplateService = __decorate([
-        context_1.Bean('templateService'), 
-        __metadata('design:paramtypes', [])
-    ], TemplateService);
     return TemplateService;
-})();
+}());
+__decorate([
+    context_2.Autowired('$scope'),
+    __metadata("design:type", Object)
+], TemplateService.prototype, "$scope", void 0);
+TemplateService = __decorate([
+    context_1.Bean('templateService')
+], TemplateService);
 exports.TemplateService = TemplateService;

@@ -1,4 +1,4 @@
-// Type definitions for ag-grid v7.0.2
+// Type definitions for ag-grid v9.0.0
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
 import { ColDef } from "./colDef";
@@ -20,6 +20,7 @@ export declare class RowNode {
     static EVENT_TOP_CHANGED: string;
     static EVENT_ROW_INDEX_CHANGED: string;
     static EVENT_EXPANDED_CHANGED: string;
+    static EVENT_LOADING_CHANGED: string;
     private mainEventService;
     private gridOptionsWrapper;
     private selectionController;
@@ -67,6 +68,8 @@ export declare class RowNode {
     field: string;
     /** Groups only - The key for the group eg Ireland, UK, USA */
     key: any;
+    /** True if rowNode is loading, used by Enterprise row model */
+    loading: boolean;
     /** All user provided nodes */
     allLeafChildren: RowNode[];
     /** Groups only - Children of this group */
@@ -85,8 +88,6 @@ export declare class RowNode {
     expanded: boolean;
     /** Groups only - If doing footers, reference to the footer node for this group */
     sibling: RowNode;
-    /** Not to be used, internal temporary map used by the grid when creating groups */
-    _childrenMap: {};
     /** The height, in pixels, of this row */
     rowHeight: number;
     /** The top pixel for this row */
@@ -105,6 +106,7 @@ export declare class RowNode {
     private createDaemonNode();
     setDataAndId(data: any, id: string): void;
     setId(id: string): void;
+    setLoading(loading: boolean): void;
     clearRowTop(): void;
     setRowTop(rowTop: number): void;
     setRowHeight(rowHeight: number): void;
@@ -120,6 +122,7 @@ export declare class RowNode {
     private calculateSelectedFromChildrenBubbleUp();
     setSelectedInitialValue(selected: boolean): void;
     setSelected(newValue: boolean, clearSelection?: boolean, tailingNodeInSequence?: boolean): void;
+    isFloating(): boolean;
     setSelectedParams(params: SetSelectedParams): number;
     private doRowRangeSelection();
     private isParentOfNode(potentialParent);

@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var context_1 = require("../context/context");
 var logger_1 = require("../logger");
 var columnController_1 = require("../columnController/columnController");
@@ -22,10 +24,11 @@ var dragAndDropService_1 = require("../dragAndDrop/dragAndDropService");
 var gridPanel_1 = require("../gridPanel/gridPanel");
 var gridOptionsWrapper_1 = require("../gridOptionsWrapper");
 var MoveColumnController = (function () {
-    function MoveColumnController(pinned) {
+    function MoveColumnController(pinned, eContainer) {
         this.needToMoveLeft = false;
         this.needToMoveRight = false;
         this.pinned = pinned;
+        this.eContainer = eContainer;
         this.centerContainer = !utils_1.Utils.exists(pinned);
     }
     MoveColumnController.prototype.init = function () {
@@ -33,7 +36,6 @@ var MoveColumnController = (function () {
     };
     MoveColumnController.prototype.getIconName = function () {
         return this.pinned ? dragAndDropService_1.DragAndDropService.ICON_PINNED : dragAndDropService_1.DragAndDropService.ICON_MOVE;
-        ;
     };
     MoveColumnController.prototype.onDragEnter = function (draggingEvent) {
         // we do dummy drag, so make sure column appears in the right location when first placed
@@ -53,13 +55,19 @@ var MoveColumnController = (function () {
     MoveColumnController.prototype.onDragStop = function () {
         this.ensureIntervalCleared();
     };
-    MoveColumnController.prototype.adjustXForScroll = function (draggingEvent) {
-        if (this.centerContainer) {
-            return draggingEvent.x + this.gridPanel.getHorizontalScrollPosition();
+    MoveColumnController.prototype.normaliseX = function (x) {
+        // flip the coordinate if doing RTL
+        var flipHorizontallyForRtl = this.gridOptionsWrapper.isEnableRtl();
+        if (flipHorizontallyForRtl) {
+            var clientWidth = this.eContainer.clientWidth;
+            x = clientWidth - x;
         }
-        else {
-            return draggingEvent.x;
+        // adjust for scroll only if centre container (the pinned containers dont scroll)
+        var adjustForScroll = this.centerContainer;
+        if (adjustForScroll) {
+            x += this.gridPanel.getBodyViewportScrollLeft();
         }
+        return x;
     };
     MoveColumnController.prototype.workOutNewIndex = function (displayedColumns, allColumns, dragColumn, hDirection, xAdjustedForScroll) {
         if (hDirection === dragAndDropService_1.HDirection.Left) {
@@ -73,10 +81,16 @@ var MoveColumnController = (function () {
         if (this.centerContainer) {
             // scroll if the mouse has gone outside the grid (or just outside the scrollable part if pinning)
             // putting in 50 buffer, so even if user gets to edge of grid, a scroll will happen
-            var firstVisiblePixel = this.gridPanel.getHorizontalScrollPosition();
+            var firstVisiblePixel = this.gridPanel.getBodyViewportScrollLeft();
             var lastVisiblePixel = firstVisiblePixel + this.gridPanel.getCenterWidth();
-            this.needToMoveLeft = xAdjustedForScroll < (firstVisiblePixel + 50);
-            this.needToMoveRight = xAdjustedForScroll > (lastVisiblePixel - 50);
+            if (this.gridOptionsWrapper.isEnableRtl()) {
+                this.needToMoveRight = xAdjustedForScroll < (firstVisiblePixel + 50);
+                this.needToMoveLeft = xAdjustedForScroll > (lastVisiblePixel - 50);
+            }
+            else {
+                this.needToMoveLeft = xAdjustedForScroll < (firstVisiblePixel + 50);
+                this.needToMoveRight = xAdjustedForScroll > (lastVisiblePixel - 50);
+            }
             if (this.needToMoveLeft || this.needToMoveRight) {
                 this.ensureIntervalStarted();
             }
@@ -92,17 +106,30 @@ var MoveColumnController = (function () {
         if (utils_1.Utils.missing(draggingEvent.hDirection)) {
             return;
         }
-        var xAdjustedForScroll = this.adjustXForScroll(draggingEvent);
+        var xNormalised = this.normaliseX(draggingEvent.x);
         // if the user is dragging into the panel, ie coming from the side panel into the main grid,
         // we don't want to scroll the grid this time, it would appear like the table is jumping
         // each time a column is dragged in.
         if (!fromEnter) {
-            this.checkCenterForScrolling(xAdjustedForScroll);
+            this.checkCenterForScrolling(xNormalised);
         }
+        var hDirectionNormalised = this.normaliseDirection(draggingEvent.hDirection);
         var columnsToMove = draggingEvent.dragSource.dragItem;
-        this.attemptMoveColumns(columnsToMove, draggingEvent.hDirection, xAdjustedForScroll, fromEnter);
+        this.attemptMoveColumns(columnsToMove, hDirectionNormalised, xNormalised, fromEnter);
     };
-    MoveColumnController.prototype.attemptMoveColumns = function (allMovingColumns, hDirection, xAdjustedForScroll, fromEnter) {
+    MoveColumnController.prototype.normaliseDirection = function (hDirection) {
+        if (this.gridOptionsWrapper.isEnableRtl()) {
+            switch (hDirection) {
+                case dragAndDropService_1.HDirection.Left: return dragAndDropService_1.HDirection.Right;
+                case dragAndDropService_1.HDirection.Right: return dragAndDropService_1.HDirection.Left;
+                default: console.error("ag-Grid: Unknown direction " + hDirection);
+            }
+        }
+        else {
+            return hDirection;
+        }
+    };
+    MoveColumnController.prototype.attemptMoveColumns = function (allMovingColumns, hDirection, xAdjusted, fromEnter) {
         var displayedColumns = this.columnController.getDisplayedColumns(this.pinned);
         var gridColumns = this.columnController.getAllGridColumns();
         var draggingLeft = hDirection === dragAndDropService_1.HDirection.Left;
@@ -113,11 +140,12 @@ var MoveColumnController = (function () {
         // under the mouse pointer
         if (draggingLeft) {
             dragColumn = displayedMovingColumns[0];
+            // if dragging right, we want to keep the right most column under the mouse pointer
         }
         else {
             dragColumn = displayedMovingColumns[displayedMovingColumns.length - 1];
         }
-        var newIndex = this.workOutNewIndex(displayedColumns, gridColumns, dragColumn, hDirection, xAdjustedForScroll);
+        var newIndex = this.workOutNewIndex(displayedColumns, gridColumns, dragColumn, hDirection, xAdjusted);
         var oldIndex = gridColumns.indexOf(dragColumn);
         // the two check below stop an error when the user grabs a group my a middle column, then
         // it is possible the mouse pointer is to the right of a column while been dragged left.
@@ -245,32 +273,32 @@ var MoveColumnController = (function () {
             }
         }
     };
-    __decorate([
-        context_1.Autowired('loggerFactory'), 
-        __metadata('design:type', logger_1.LoggerFactory)
-    ], MoveColumnController.prototype, "loggerFactory", void 0);
-    __decorate([
-        context_1.Autowired('columnController'), 
-        __metadata('design:type', columnController_1.ColumnController)
-    ], MoveColumnController.prototype, "columnController", void 0);
-    __decorate([
-        context_1.Autowired('gridPanel'), 
-        __metadata('design:type', gridPanel_1.GridPanel)
-    ], MoveColumnController.prototype, "gridPanel", void 0);
-    __decorate([
-        context_1.Autowired('dragAndDropService'), 
-        __metadata('design:type', dragAndDropService_1.DragAndDropService)
-    ], MoveColumnController.prototype, "dragAndDropService", void 0);
-    __decorate([
-        context_1.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], MoveColumnController.prototype, "gridOptionsWrapper", void 0);
-    __decorate([
-        context_1.PostConstruct, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], MoveColumnController.prototype, "init", null);
     return MoveColumnController;
-})();
+}());
+__decorate([
+    context_1.Autowired('loggerFactory'),
+    __metadata("design:type", logger_1.LoggerFactory)
+], MoveColumnController.prototype, "loggerFactory", void 0);
+__decorate([
+    context_1.Autowired('columnController'),
+    __metadata("design:type", columnController_1.ColumnController)
+], MoveColumnController.prototype, "columnController", void 0);
+__decorate([
+    context_1.Autowired('gridPanel'),
+    __metadata("design:type", gridPanel_1.GridPanel)
+], MoveColumnController.prototype, "gridPanel", void 0);
+__decorate([
+    context_1.Autowired('dragAndDropService'),
+    __metadata("design:type", dragAndDropService_1.DragAndDropService)
+], MoveColumnController.prototype, "dragAndDropService", void 0);
+__decorate([
+    context_1.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], MoveColumnController.prototype, "gridOptionsWrapper", void 0);
+__decorate([
+    context_1.PostConstruct,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], MoveColumnController.prototype, "init", null);
 exports.MoveColumnController = MoveColumnController;

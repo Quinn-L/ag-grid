@@ -1,10 +1,12 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
-var utils_1 = require('../utils');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var utils_1 = require("../utils");
 var TabbedLayout = (function () {
     function TabbedLayout(params) {
         var _this = this;
@@ -88,10 +90,10 @@ var TabbedLayout = (function () {
     TabbedLayout.prototype.getGui = function () {
         return this.eGui;
     };
-    TabbedLayout.TEMPLATE = '<div>' +
-        '<div id="tabHeader" class="ag-tab-header"></div>' +
-        '<div id="tabBody" class="ag-tab-body"></div>' +
-        '</div>';
     return TabbedLayout;
-})();
+}());
+TabbedLayout.TEMPLATE = '<div>' +
+    '<div id="tabHeader" class="ag-tab-header"></div>' +
+    '<div id="tabBody" class="ag-tab-body"></div>' +
+    '</div>';
 exports.TabbedLayout = TabbedLayout;

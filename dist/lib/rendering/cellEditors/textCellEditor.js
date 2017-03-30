@@ -1,21 +1,28 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("../../constants");
 var component_1 = require("../../widgets/component");
-var utils_1 = require('../../utils');
+var utils_1 = require("../../utils");
 var TextCellEditor = (function (_super) {
     __extends(TextCellEditor, _super);
     function TextCellEditor() {
-        _super.call(this, TextCellEditor.TEMPLATE);
+        return _super.call(this, TextCellEditor.TEMPLATE) || this;
     }
     TextCellEditor.prototype.init = function (params) {
         var eInput = this.getGui();
@@ -82,7 +89,7 @@ var TextCellEditor = (function (_super) {
         var eInput = this.getGui();
         return eInput.value;
     };
-    TextCellEditor.TEMPLATE = '<input class="ag-cell-edit-input" type="text"/>';
     return TextCellEditor;
-})(component_1.Component);
+}(component_1.Component));
+TextCellEditor.TEMPLATE = '<input class="ag-cell-edit-input" type="text"/>';
 exports.TextCellEditor = TextCellEditor;

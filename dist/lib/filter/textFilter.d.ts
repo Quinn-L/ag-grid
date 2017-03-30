@@ -1,39 +1,28 @@
-// Type definitions for ag-grid v7.0.2
+// Type definitions for ag-grid v9.0.0
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
-import { IFilter, IFilterParams, IDoesFilterPassParams } from "../interfaces/iFilter";
-export declare class TextFilter implements IFilter {
-    static CONTAINS: string;
-    static EQUALS: string;
-    static NOT_EQUALS: string;
-    static STARTS_WITH: string;
-    static ENDS_WITH: string;
-    private filterParams;
-    private gridOptionsWrapper;
-    private filterText;
-    private filterType;
-    private applyActive;
-    private newRowsActionKeep;
-    private eGui;
+import { IFilterParams, IDoesFilterPassParams, SerializedFilter } from "../interfaces/iFilter";
+import { ComparableBaseFilter } from "./baseFilter";
+export interface SerializedTextFilter extends SerializedFilter {
+    filter: string;
+    type: string;
+}
+export declare class TextFilter extends ComparableBaseFilter<string, IFilterParams, SerializedTextFilter> {
     private eFilterTextField;
-    private eTypeSelect;
-    private eApplyButton;
-    init(params: IFilterParams): void;
-    onNewRowsLoaded(): void;
+    private filterText;
+    modelFromFloatingFilter(from: string): SerializedTextFilter;
+    getApplicableFilterTypes(): string[];
+    bodyTemplate(): string;
+    initialiseFilterBodyUi(): void;
+    refreshFilterBodyUi(): void;
     afterGuiAttached(): void;
+    filterValues(): string;
     doesFilterPass(params: IDoesFilterPassParams): boolean;
-    getGui(): HTMLElement;
-    isFilterActive(): boolean;
-    private createTemplate();
-    private createGui();
-    private setupApply();
-    private onTypeChanged();
-    private onFilterChanged();
-    private filterChanged();
-    setType(type: string): void;
+    private onFilterTextFieldChanged();
     setFilter(filter: string): void;
-    getType(): string;
     getFilter(): string;
-    getModel(): any;
-    setModel(model: any): void;
+    resetState(): void;
+    serialize(): SerializedTextFilter;
+    parse(model: SerializedTextFilter): void;
+    setType(filterType: string): void;
 }

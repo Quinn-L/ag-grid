@@ -1,15 +1,15 @@
-// Type definitions for ag-grid v7.0.2
+// Type definitions for ag-grid v9.0.0
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
 import { RowNode } from "./rowNode";
-import { SetFilterParameters } from "../filter/setFilterParameters";
-import { TextAndNumberFilterParameters } from "../filter/textAndNumberFilterParameters";
-import { ICellEditor } from "../rendering/cellEditors/iCellEditor";
-import { ICellRendererFunc, ICellRenderer } from "../rendering/cellRenderers/iCellRenderer";
+import { ICellEditorComp } from "../rendering/cellEditors/iCellEditor";
+import { ICellRendererFunc, ICellRendererComp } from "../rendering/cellRenderers/iCellRenderer";
 import { Column } from "./column";
-import { IFilter } from "../interfaces/iFilter";
+import { IFilterComp } from "../interfaces/iFilter";
 import { GridApi } from "../gridApi";
 import { ColumnApi } from "../columnController/columnController";
+import { IHeaderGroupComp } from "../headerRendering/headerGroup/headerGroupComp";
+import { IFloatingFilterComp } from "../filter/floatingFilter";
 /** AbstractColDef can be a group or a column definition */
 export interface AbstractColDef {
     /** The name to render in the column header */
@@ -36,6 +36,12 @@ export interface ColGroupDef extends AbstractColDef {
     openByDefault?: boolean;
     /** If true, group cannot be broken up by column moving, child columns will always appear side by side, however you can rearrange child columns within the group */
     marryChildren?: boolean;
+    /** The custom header group component to be used for rendering the component header. If none specified the default ag-Grid is used**/
+    headerGroupComponent?: {
+        new (): IHeaderGroupComp;
+    };
+    /** The custom header group component to be used for rendering the component header. If none specified the default ag-Grid is used**/
+    headerGroupComponentParams?: any;
 }
 export interface IAggFunc {
     (input: any[]): any;
@@ -83,22 +89,22 @@ export interface ColDef extends AbstractColDef {
     cellStyle?: {} | ((params: any) => {});
     /** A function for rendering a cell. */
     cellRenderer?: {
-        new (): ICellRenderer;
+        new (): ICellRendererComp;
     } | ICellRendererFunc | string;
     cellRendererFramework?: any;
-    cellRendererParams?: {};
+    cellRendererParams?: any;
     /** Cell editor */
     cellEditor?: {
-        new (): ICellEditor;
+        new (): ICellEditorComp;
     } | string;
     cellEditorFramework?: any;
-    cellEditorParams?: {};
+    cellEditorParams?: any;
     /** A function for rendering a floating cell. */
     floatingCellRenderer?: {
-        new (): ICellRenderer;
+        new (): ICellRendererComp;
     } | ICellRendererFunc | string;
     floatingCellRendererFramework?: any;
-    floatingCellRendererParams?: {};
+    floatingCellRendererParams?: any;
     /** A function to format a value, should return a string. Not used for CSV export or copy to clipboard, only for UI cell rendering. */
     cellFormatter?: (params: any) => string;
     /** A function to format a floating value, should return a string. Not used for CSV export or copy to clipboard, only for UI cell rendering. */
@@ -115,6 +121,10 @@ export interface ColDef extends AbstractColDef {
     pivotComparator?: (valueA: string, valueB: string) => number;
     /** Set to true to render a selection checkbox in the column. */
     checkboxSelection?: boolean | ((params: any) => boolean);
+    /** If true, a 'select all' checkbox will be put into the header */
+    headerCheckboxSelection?: boolean | ((params: any) => boolean);
+    /** If true, the header checkbox selection will work on filtered items*/
+    headerCheckboxSelectionFilteredOnly?: boolean;
     /** Set to true if no menu should be shown for this column header. */
     suppressMenu?: boolean;
     /** Set to true if no sorting should be done for this column. */
@@ -153,11 +163,11 @@ export interface ColDef extends AbstractColDef {
     templateUrl?: string;
     /** one of the built in filter names: [set, number, text], or a filter function*/
     filter?: string | {
-        new (): IFilter;
+        new (): IFilterComp;
     };
     filterFramework?: any;
     /** The filter params are specific to each filter! */
-    filterParams?: SetFilterParameters | TextAndNumberFilterParameters;
+    filterParams?: any;
     /** Rules for applying css classes */
     cellClassRules?: {
         [cssClassName: string]: (Function | string);
@@ -178,6 +188,24 @@ export interface ColDef extends AbstractColDef {
     enableCellChangeFlash?: boolean;
     /** Never set this, it is used internally by grid when doing in-grid pivoting */
     pivotValueColumn?: Column;
+    /** The custom header component to be used for rendering the component header. If none specified the default ag-Grid is used**/
+    headerComponent?: {
+        new (): any;
+    };
+    /** The custom header component to be used for rendering the component header in the hosting framework (ie: React/Angular). If none specified the default ag-Grid is used**/
+    headerComponentFramework?: {
+        new (): any;
+    };
+    /** The custom header component parameters**/
+    headerComponentParams?: any;
+    /** The custom header component to be used for rendering the floating filter. If none specified the default ag-Grid is used**/
+    floatingFilterComponent?: {
+        new (): IFloatingFilterComp<any, any, any>;
+    };
+    floatingFilterComponentParams?: any;
+    floatingFilterComponentFramework?: {
+        new (): any;
+    };
 }
 export interface IsColumnFunc {
     (params: IsColumnFuncParams): boolean;

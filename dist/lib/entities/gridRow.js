@@ -1,11 +1,13 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var constants_1 = require("../constants");
-var utils_1 = require('../utils');
+var utils_1 = require("../utils");
 var gridCell_1 = require("./gridCell");
 var GridRow = (function () {
     function GridRow(rowIndex, floating) {
@@ -29,7 +31,8 @@ var GridRow = (function () {
         return "rowIndex = " + this.rowIndex + ", floating = " + this.floating;
     };
     GridRow.prototype.getGridCell = function (column) {
-        return new gridCell_1.GridCell(this.rowIndex, this.floating, column);
+        var gridCellDef = { rowIndex: this.rowIndex, floating: this.floating, column: column };
+        return new gridCell_1.GridCell(gridCellDef);
     };
     // tests if this row selection is before the other row selection
     GridRow.prototype.before = function (otherSelection) {
@@ -64,5 +67,5 @@ var GridRow = (function () {
         return this.rowIndex <= otherSelection.rowIndex;
     };
     return GridRow;
-})();
+}());
 exports.GridRow = GridRow;

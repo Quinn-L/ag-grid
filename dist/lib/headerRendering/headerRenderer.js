@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var gridOptionsWrapper_1 = require("../gridOptionsWrapper");
 var columnController_1 = require("../columnController/columnController");
 var gridPanel_1 = require("../gridPanel/gridPanel");
@@ -21,6 +23,7 @@ var context_1 = require("../context/context");
 var headerContainer_1 = require("./headerContainer");
 var eventService_1 = require("../eventService");
 var events_1 = require("../events");
+var scrollVisibleService_1 = require("../gridPanel/scrollVisibleService");
 var HeaderRenderer = (function () {
     function HeaderRenderer() {
     }
@@ -45,9 +48,13 @@ var HeaderRenderer = (function () {
         // for resized, the individual cells take care of this, so don't need to refresh everything
         this.eventService.addEventListener(events_1.Events.EVENT_COLUMN_RESIZED, this.setPinnedColContainerWidth.bind(this));
         this.eventService.addEventListener(events_1.Events.EVENT_DISPLAYED_COLUMNS_CHANGED, this.setPinnedColContainerWidth.bind(this));
+        this.eventService.addEventListener(events_1.Events.EVENT_SCROLL_VISIBILITY_CHANGED, this.onScrollVisibilityChanged.bind(this));
         if (this.columnController.isReady()) {
             this.refreshHeader();
         }
+    };
+    HeaderRenderer.prototype.onScrollVisibilityChanged = function () {
+        this.setPinnedColContainerWidth();
     };
     HeaderRenderer.prototype.forEachHeaderElement = function (callback) {
         this.childContainers.forEach(function (childContainer) { return childContainer.forEachHeaderElement(callback); });
@@ -80,49 +87,50 @@ var HeaderRenderer = (function () {
         if (this.gridOptionsWrapper.isForPrint()) {
             return;
         }
-        var pinnedLeftWidth = this.columnController.getPinnedLeftContainerWidth();
-        this.eHeaderViewport.style.marginLeft = pinnedLeftWidth + 'px';
-        this.pinnedLeftContainer.setWidth(pinnedLeftWidth);
-        var pinnedRightWidth = this.columnController.getPinnedRightContainerWidth();
-        this.eHeaderViewport.style.marginRight = pinnedRightWidth + 'px';
-        this.pinnedRightContainer.setWidth(pinnedRightWidth);
+        var pinnedLeftWidthWithScroll = this.scrollVisibleService.getPinnedLeftWithScrollWidth();
+        var pinnedRightWidthWithScroll = this.scrollVisibleService.getPinnedRightWithScrollWidth();
+        this.eHeaderViewport.style.marginLeft = pinnedLeftWidthWithScroll + 'px';
+        this.eHeaderViewport.style.marginRight = pinnedRightWidthWithScroll + 'px';
     };
-    __decorate([
-        context_1.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], HeaderRenderer.prototype, "gridOptionsWrapper", void 0);
-    __decorate([
-        context_1.Autowired('columnController'), 
-        __metadata('design:type', columnController_1.ColumnController)
-    ], HeaderRenderer.prototype, "columnController", void 0);
-    __decorate([
-        context_1.Autowired('gridPanel'), 
-        __metadata('design:type', gridPanel_1.GridPanel)
-    ], HeaderRenderer.prototype, "gridPanel", void 0);
-    __decorate([
-        context_1.Autowired('context'), 
-        __metadata('design:type', context_1.Context)
-    ], HeaderRenderer.prototype, "context", void 0);
-    __decorate([
-        context_1.Autowired('eventService'), 
-        __metadata('design:type', eventService_1.EventService)
-    ], HeaderRenderer.prototype, "eventService", void 0);
-    __decorate([
-        context_1.PostConstruct, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], HeaderRenderer.prototype, "init", null);
-    __decorate([
-        context_1.PreDestroy, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], HeaderRenderer.prototype, "destroy", null);
-    HeaderRenderer = __decorate([
-        context_1.Bean('headerRenderer'), 
-        __metadata('design:paramtypes', [])
-    ], HeaderRenderer);
     return HeaderRenderer;
-})();
+}());
+__decorate([
+    context_1.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], HeaderRenderer.prototype, "gridOptionsWrapper", void 0);
+__decorate([
+    context_1.Autowired('columnController'),
+    __metadata("design:type", columnController_1.ColumnController)
+], HeaderRenderer.prototype, "columnController", void 0);
+__decorate([
+    context_1.Autowired('gridPanel'),
+    __metadata("design:type", gridPanel_1.GridPanel)
+], HeaderRenderer.prototype, "gridPanel", void 0);
+__decorate([
+    context_1.Autowired('context'),
+    __metadata("design:type", context_1.Context)
+], HeaderRenderer.prototype, "context", void 0);
+__decorate([
+    context_1.Autowired('eventService'),
+    __metadata("design:type", eventService_1.EventService)
+], HeaderRenderer.prototype, "eventService", void 0);
+__decorate([
+    context_1.Autowired('scrollVisibleService'),
+    __metadata("design:type", scrollVisibleService_1.ScrollVisibleService)
+], HeaderRenderer.prototype, "scrollVisibleService", void 0);
+__decorate([
+    context_1.PostConstruct,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], HeaderRenderer.prototype, "init", null);
+__decorate([
+    context_1.PreDestroy,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], HeaderRenderer.prototype, "destroy", null);
+HeaderRenderer = __decorate([
+    context_1.Bean('headerRenderer')
+], HeaderRenderer);
 exports.HeaderRenderer = HeaderRenderer;

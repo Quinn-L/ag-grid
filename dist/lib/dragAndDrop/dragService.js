@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var context_1 = require("../context/context");
 var logger_1 = require("../logger");
 var utils_1 = require("../utils");
@@ -32,7 +34,6 @@ var DragService = (function () {
     }
     DragService.prototype.init = function () {
         this.logger = this.loggerFactory.create('DragService');
-        this.eBody = document.querySelector('body');
     };
     DragService.prototype.destroy = function () {
         this.dragSources.forEach(this.removeListener.bind(this));
@@ -57,8 +58,10 @@ var DragService = (function () {
         utils_1.Utils.removeFromArray(this.dragSources, dragSourceAndListener);
     };
     DragService.prototype.setNoSelectToBody = function (noSelect) {
-        if (utils_1.Utils.exists(this.eBody)) {
-            utils_1.Utils.addOrRemoveCssClass(this.eBody, 'ag-body-no-select', noSelect);
+        var usrDocument = this.gridOptionsWrapper.getDocument();
+        var eBody = usrDocument.querySelector('body');
+        if (utils_1.Utils.exists(eBody)) {
+            utils_1.Utils.addOrRemoveCssClass(eBody, 'ag-body-no-select', noSelect);
         }
     };
     DragService.prototype.addDragSource = function (params, includeTouch) {
@@ -114,13 +117,14 @@ var DragService = (function () {
         this.dragging = false;
         this.mouseEventLastTime = mouseEvent;
         this.mouseStartEvent = mouseEvent;
+        var usrDocument = this.gridOptionsWrapper.getDocument();
         // we temporally add these listeners, for the duration of the drag, they
         // are removed in mouseup handling.
-        document.addEventListener('mousemove', this.onMouseMoveListener);
-        document.addEventListener('mouseup', this.onMouseUpListener);
+        usrDocument.addEventListener('mousemove', this.onMouseMoveListener);
+        usrDocument.addEventListener('mouseup', this.onMouseUpListener);
         this.dragEndFunctions.push(function () {
-            document.removeEventListener('mousemove', _this.onMouseMoveListener);
-            document.removeEventListener('mouseup', _this.onMouseUpListener);
+            usrDocument.removeEventListener('mousemove', _this.onMouseMoveListener);
+            usrDocument.removeEventListener('mouseup', _this.onMouseUpListener);
         });
         // see if we want to start dragging straight away
         if (params.dragStartPixels === 0) {
@@ -212,34 +216,33 @@ var DragService = (function () {
         this.dragEndFunctions.forEach(function (func) { return func(); });
         this.dragEndFunctions.length = 0;
     };
-    __decorate([
-        context_1.Autowired('loggerFactory'), 
-        __metadata('design:type', logger_1.LoggerFactory)
-    ], DragService.prototype, "loggerFactory", void 0);
-    __decorate([
-        context_1.Autowired('eventService'), 
-        __metadata('design:type', eventService_1.EventService)
-    ], DragService.prototype, "eventService", void 0);
-    __decorate([
-        context_1.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], DragService.prototype, "gridOptionsWrapper", void 0);
-    __decorate([
-        context_1.PostConstruct, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], DragService.prototype, "init", null);
-    __decorate([
-        context_1.PreDestroy, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], DragService.prototype, "destroy", null);
-    DragService = __decorate([
-        context_1.Bean('dragService'), 
-        __metadata('design:paramtypes', [])
-    ], DragService);
     return DragService;
-})();
+}());
+__decorate([
+    context_1.Autowired('loggerFactory'),
+    __metadata("design:type", logger_1.LoggerFactory)
+], DragService.prototype, "loggerFactory", void 0);
+__decorate([
+    context_1.Autowired('eventService'),
+    __metadata("design:type", eventService_1.EventService)
+], DragService.prototype, "eventService", void 0);
+__decorate([
+    context_1.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], DragService.prototype, "gridOptionsWrapper", void 0);
+__decorate([
+    context_1.PostConstruct,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], DragService.prototype, "init", null);
+__decorate([
+    context_1.PreDestroy,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], DragService.prototype, "destroy", null);
+DragService = __decorate([
+    context_1.Bean('dragService')
+], DragService);
 exports.DragService = DragService;

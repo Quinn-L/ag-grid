@@ -1,9 +1,11 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var FUNCTION_STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
 var FUNCTION_ARGUMENT_NAMES = /([^\s,]+)/g;
 // util class, only used when debugging, for printing time to console
@@ -17,8 +19,17 @@ var Timer = (function () {
         this.timestamp = new Date().getTime();
     };
     return Timer;
-})();
+}());
 exports.Timer = Timer;
+/** HTML Escapes. */
+var HTML_ESCAPES = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+};
+var reUnescapedHtml = /[&<>"']/g;
 var Utils = (function () {
     function Utils() {
     }
@@ -86,6 +97,43 @@ var Utils = (function () {
             return currentObject;
         }
     };
+    Utils.getScrollLeft = function (element, rtl) {
+        var scrollLeft = element.scrollLeft;
+        if (rtl) {
+            // Absolute value - for FF that reports RTL scrolls in negative numbers
+            scrollLeft = Math.abs(scrollLeft);
+            // Get Chrome and Safari to return the same value as well
+            if (this.isBrowserSafari() || this.isBrowserChrome()) {
+                scrollLeft = element.scrollWidth - element.clientWidth - scrollLeft;
+            }
+        }
+        return scrollLeft;
+    };
+    Utils.cleanNumber = function (value) {
+        if (typeof value === 'string') {
+            value = parseInt(value);
+        }
+        if (typeof value === 'number') {
+            value = Math.floor(value);
+        }
+        else {
+            value = null;
+        }
+        return value;
+    };
+    Utils.setScrollLeft = function (element, value, rtl) {
+        if (rtl) {
+            // Chrome and Safari when doing RTL have the END position of the scroll as zero, not the start
+            if (this.isBrowserSafari() || this.isBrowserChrome()) {
+                value = element.scrollWidth - element.clientWidth - value;
+            }
+            // Firefox uses negative numbers when doing RTL scrolling
+            if (this.isBrowserFirefox()) {
+                value *= -1;
+            }
+        }
+        element.scrollLeft = value;
+    };
     Utils.iterateObject = function (object, callback) {
         if (this.missing(object)) {
             return;
@@ -141,12 +189,57 @@ var Utils = (function () {
         });
         return result;
     };
+    Utils.mergeDeep = function (object, source) {
+        if (this.exists(source)) {
+            this.iterateObject(source, function (key, value) {
+                var currentValue = object[key];
+                var target = source[key];
+                if (currentValue == null) {
+                    object[key] = value;
+                }
+                if (typeof currentValue === 'object') {
+                    if (target) {
+                        Utils.mergeDeep(object[key], target);
+                    }
+                }
+                if (target) {
+                    object[key] = target;
+                }
+            });
+        }
+    };
     Utils.assign = function (object, source) {
         if (this.exists(source)) {
             this.iterateObject(source, function (key, value) {
                 object[key] = value;
             });
         }
+    };
+    Utils.parseYyyyMmDdToDate = function (yyyyMmDd, separator) {
+        try {
+            if (!yyyyMmDd)
+                return null;
+            if (yyyyMmDd.indexOf(separator) === -1)
+                return null;
+            var fields = yyyyMmDd.split(separator);
+            if (fields.length != 3)
+                return null;
+            return new Date(Number(fields[0]), Number(fields[1]) - 1, Number(fields[2]));
+        }
+        catch (e) {
+            return null;
+        }
+    };
+    Utils.serializeDateToYyyyMmDd = function (date, separator) {
+        if (!date)
+            return null;
+        return date.getFullYear() + separator + Utils.pad(date.getMonth() + 1, 2) + separator + Utils.pad(date.getDate(), 2);
+    };
+    Utils.pad = function (num, totalStringSize) {
+        var asString = num + "";
+        while (asString.length < totalStringSize)
+            asString = "0" + asString;
+        return asString;
     };
     Utils.pushAll = function (target, source) {
         if (this.missing(source) || this.missing(target)) {
@@ -168,9 +261,14 @@ var Utils = (function () {
         if (collection === null || collection === undefined) {
             return null;
         }
+        if (!Array.isArray(collection)) {
+            var objToArray = this.values(collection);
+            return this.find(objToArray, predicate, value);
+        }
+        var collectionAsArray = collection;
         var firstMatchingItem;
-        for (var i = 0; i < collection.length; i++) {
-            var item = collection[i];
+        for (var i = 0; i < collectionAsArray.length; i++) {
+            var item = collectionAsArray[i];
             if (typeof predicate === 'string') {
                 if (item[predicate] === value) {
                     firstMatchingItem = item;
@@ -253,6 +351,16 @@ var Utils = (function () {
         else {
             return true;
         }
+    };
+    Utils.anyExists = function (values) {
+        if (values) {
+            for (var i = 0; i < values.length; i++) {
+                if (this.exists(values[i])) {
+                    return true;
+                }
+            }
+        }
+        return false;
     };
     Utils.existsAndNotEmpty = function (value) {
         return this.exists(value) && value.length > 0;
@@ -391,6 +499,13 @@ var Utils = (function () {
             array.splice(array.indexOf(object), 1);
         }
     };
+    Utils.removeAllFromArray = function (array, toRemove) {
+        toRemove.forEach(function (item) {
+            if (array.indexOf(item) >= 0) {
+                array.splice(array.indexOf(item), 1);
+            }
+        });
+    };
     Utils.insertIntoArray = function (array, object, toIndex) {
         array.splice(toIndex, 0, object);
     };
@@ -434,6 +549,8 @@ var Utils = (function () {
                 return valueA.localeCompare(valueB);
             }
             catch (e) {
+                // if something wrong with localeCompare, eg not supported
+                // by browser, then just continue without using it
             }
         }
         if (valueA < valueB) {
@@ -480,13 +597,20 @@ var Utils = (function () {
         }
     };
     Utils.formatNumberTwoDecimalPlacesAndCommas = function (value) {
-        // took this from: http://blog.tompawlak.org/number-currency-formatting-javascript
-        if (typeof value === 'number') {
-            return (Math.round(value * 100) / 100).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
-        }
-        else {
+        if (typeof value !== 'number') {
             return '';
         }
+        // took this from: http://blog.tompawlak.org/number-currency-formatting-javascript
+        return (Math.round(value * 100) / 100).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
+    };
+    // the native method number.toLocaleString(undefined, {minimumFractionDigits: 0}) puts in decimal places in IE,
+    // so we use this method instead
+    Utils.formatNumberCommas = function (value) {
+        if (typeof value !== 'number') {
+            return '';
+        }
+        // took this from: http://blog.tompawlak.org/number-currency-formatting-javascript
+        return value.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
     };
     Utils.prependDC = function (parent, documentFragment) {
         if (this.exists(parent.firstChild)) {
@@ -562,7 +686,10 @@ var Utils = (function () {
             eElement.style[key] = styles[key];
         });
     };
-    Utils.isScrollShowing = function (element) {
+    Utils.isHorizontalScrollShowing = function (element) {
+        return element.clientWidth < element.scrollWidth;
+    };
+    Utils.isVerticalScrollShowing = function (element) {
         return element.clientHeight < element.scrollHeight;
     };
     Utils.getScrollbarWidth = function () {
@@ -587,18 +714,11 @@ var Utils = (function () {
         var pressedKey = event.which || event.keyCode;
         return pressedKey === keyToCheck;
     };
-    Utils.setVisible = function (element, visible, visibleStyle) {
-        if (visible) {
-            if (this.exists(visibleStyle)) {
-                element.style.display = visibleStyle;
-            }
-            else {
-                element.style.display = 'inline';
-            }
-        }
-        else {
-            element.style.display = 'none';
-        }
+    Utils.setVisible = function (element, visible) {
+        this.addOrRemoveCssClass(element, 'ag-hidden', !visible);
+    };
+    Utils.setHidden = function (element, hidden) {
+        this.addOrRemoveCssClass(element, 'ag-visibility-hidden', hidden);
     };
     Utils.isBrowserIE = function () {
         if (this.isIE === undefined) {
@@ -614,9 +734,27 @@ var Utils = (function () {
     };
     Utils.isBrowserSafari = function () {
         if (this.isSafari === undefined) {
-            this.isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
+            var anyWindow = window;
+            // taken from https://github.com/ceolter/ag-grid/issues/550
+            this.isSafari = Object.prototype.toString.call(anyWindow.HTMLElement).indexOf('Constructor') > 0
+                || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!anyWindow.safari || anyWindow.safari.pushNotification);
         }
         return this.isSafari;
+    };
+    Utils.isBrowserChrome = function () {
+        if (this.isChrome === undefined) {
+            var anyWindow = window;
+            this.isChrome = !!anyWindow.chrome && !!anyWindow.chrome.webstore;
+        }
+        return this.isChrome;
+    };
+    Utils.isBrowserFirefox = function () {
+        if (this.isFirefox === undefined) {
+            var anyWindow = window;
+            this.isFirefox = typeof anyWindow.InstallTrigger !== 'undefined';
+            ;
+        }
+        return this.isFirefox;
     };
     // srcElement is only available in IE. In all other browsers it is target
     // http://stackoverflow.com/questions/5301643/how-can-i-make-event-srcelement-work-in-firefox-and-what-does-it-mean
@@ -675,6 +813,19 @@ var Utils = (function () {
                 }
             });
         }
+    };
+    /**
+     * From http://stackoverflow.com/questions/9716468/is-there-any-function-like-isnumeric-in-javascript-to-validate-numbers
+     */
+    Utils.isNumeric = function (value) {
+        return !isNaN(parseFloat(value)) && isFinite(value);
+    };
+    Utils.escape = function (toEscape) {
+        if (toEscape === null)
+            return null;
+        if (!toEscape.replace)
+            return toEscape;
+        return toEscape.replace(reUnescapedHtml, function (chr) { return HTML_ESCAPES[chr]; });
     };
     // Taken from here: https://github.com/facebook/fixed-data-table/blob/master/src/vendor_upstream/dom/normalizeWheel.js
     /**
@@ -836,7 +987,7 @@ var Utils = (function () {
             pixelY: pY };
     };
     return Utils;
-})();
+}());
 exports.Utils = Utils;
 var NumberSequence = (function () {
     function NumberSequence(initValue, step) {
@@ -851,5 +1002,6 @@ var NumberSequence = (function () {
         return valToReturn;
     };
     return NumberSequence;
-})();
+}());
 exports.NumberSequence = NumberSequence;
+exports._ = Utils;

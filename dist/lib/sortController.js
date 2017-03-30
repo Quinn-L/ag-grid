@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var column_1 = require("./entities/column");
 var context_1 = require("./context/context");
 var gridOptionsWrapper_1 = require("./gridOptionsWrapper");
@@ -20,13 +22,21 @@ var columnController_1 = require("./columnController/columnController");
 var eventService_1 = require("./eventService");
 var events_1 = require("./events");
 var context_2 = require("./context/context");
-var utils_1 = require('./utils');
-var SortController = (function () {
+var utils_1 = require("./utils");
+var SortController = SortController_1 = (function () {
     function SortController() {
     }
     SortController.prototype.progressSort = function (column, multiSort) {
+        var nextDirection = this.getNextSortDirection(column);
+        this.setSortForColumn(column, nextDirection, multiSort);
+    };
+    SortController.prototype.setSortForColumn = function (column, sort, multiSort) {
+        // auto correct - if sort not legal value, then set it to 'no sort' (which is null)
+        if (sort !== column_1.Column.SORT_ASC && sort !== column_1.Column.SORT_DESC) {
+            sort = null;
+        }
         // update sort on current col
-        column.setSort(this.getNextSortDirection(column));
+        column.setSort(sort);
         // sortedAt used for knowing order of cols when multi-col sort
         if (column.getSort()) {
             var sortedAt = Number(new Date().valueOf());
@@ -40,6 +50,11 @@ var SortController = (function () {
         if (!doingMultiSort) {
             this.clearSortBarThisColumn(column);
         }
+        this.dispatchSortChangedEvents();
+    };
+    // gets called by API, so if data changes, use can call this, which will end up
+    // working out the sort order again of the rows.
+    SortController.prototype.onSortChanged = function () {
         this.dispatchSortChangedEvents();
     };
     SortController.prototype.dispatchSortChangedEvents = function () {
@@ -64,7 +79,7 @@ var SortController = (function () {
             sortingOrder = this.gridOptionsWrapper.getSortingOrder();
         }
         else {
-            sortingOrder = SortController.DEFAULT_SORTING_ORDER;
+            sortingOrder = SortController_1.DEFAULT_SORTING_ORDER;
         }
         if (!Array.isArray(sortingOrder) || sortingOrder.length <= 0) {
             console.warn('ag-grid: sortingOrder must be an array with at least one element, currently it\'s ' + sortingOrder);
@@ -81,7 +96,7 @@ var SortController = (function () {
             result = sortingOrder[currentIndex + 1];
         }
         // verify the sort type exists, as the user could provide the sortOrder, need to make sure it's valid
-        if (SortController.DEFAULT_SORTING_ORDER.indexOf(result) < 0) {
+        if (SortController_1.DEFAULT_SORTING_ORDER.indexOf(result) < 0) {
             console.warn('ag-grid: invalid sort type ' + result);
             return null;
         }
@@ -149,23 +164,23 @@ var SortController = (function () {
             };
         });
     };
-    SortController.DEFAULT_SORTING_ORDER = [column_1.Column.SORT_ASC, column_1.Column.SORT_DESC, null];
-    __decorate([
-        context_1.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], SortController.prototype, "gridOptionsWrapper", void 0);
-    __decorate([
-        context_1.Autowired('columnController'), 
-        __metadata('design:type', columnController_1.ColumnController)
-    ], SortController.prototype, "columnController", void 0);
-    __decorate([
-        context_1.Autowired('eventService'), 
-        __metadata('design:type', eventService_1.EventService)
-    ], SortController.prototype, "eventService", void 0);
-    SortController = __decorate([
-        context_2.Bean('sortController'), 
-        __metadata('design:paramtypes', [])
-    ], SortController);
     return SortController;
-})();
+}());
+SortController.DEFAULT_SORTING_ORDER = [column_1.Column.SORT_ASC, column_1.Column.SORT_DESC, null];
+__decorate([
+    context_1.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], SortController.prototype, "gridOptionsWrapper", void 0);
+__decorate([
+    context_1.Autowired('columnController'),
+    __metadata("design:type", columnController_1.ColumnController)
+], SortController.prototype, "columnController", void 0);
+__decorate([
+    context_1.Autowired('eventService'),
+    __metadata("design:type", eventService_1.EventService)
+], SortController.prototype, "eventService", void 0);
+SortController = SortController_1 = __decorate([
+    context_2.Bean('sortController')
+], SortController);
 exports.SortController = SortController;
+var SortController_1;

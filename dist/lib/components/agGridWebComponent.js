@@ -1,9 +1,11 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var componentUtil_1 = require("./componentUtil");
 var grid_1 = require("../grid");
 var registered = false;

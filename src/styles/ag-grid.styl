@@ -1,9 +1,22 @@
+// nib is important, as it gets stylus to include variations on the CSS for browsers.
+// eg 'user-select' gets compiled to versions '-webkit-user-select, -moz-user-select, -ms-user-select'
 @import 'nib'
 
 // if we don't do this, then the width and height of the grid would be ignored,
 // as there is no default display for the element ag-grid-a2 (as it's not a natural dom element)
+ag-grid-angular
+    display inline-block
+
 ag-grid-ng2
     display inline-block
+
+.ag-rtl
+    //text-align right
+    direction rtl
+
+.ag-ltr
+    //text-align left
+    direction ltr
 
 .ag-select-agg-func-popup
     position absolute
@@ -92,6 +105,39 @@ ag-grid-ng2
     position absolute
     //float left // safari doesn't align if we don't float
 
+.ag-floating-filter
+    box-sizing border-box
+    position absolute
+    display inline-block
+
+.ag-floating-filter-body
+    margin-right 25px
+    height: 20px;
+
+.ag-floating-filter-full-body
+    width:100%;
+    height: 20px;
+
+.ag-floating-filter-button
+    width: 25px
+    height: 20px
+    float: right
+    margin-top: -20px
+    button
+        width: 25px;
+        height:19px
+        padding: 0;
+
+.ag-floating-filter-input
+    width: 100%
+
+.ag-floating-filter-input:read-only
+    background-color #eeeeee
+
+.ag-floating-filter-menu
+    position absolute
+    user-select none
+
 // the ghost header cell doesn't live inside the grid, it's parent is the body element,
 // so we cannot style using standard themes. hence we break the rules, and style it here
 .ag-dnd-ghost
@@ -143,8 +189,25 @@ ag-grid-ng2
 .ag-header-cell-resize
     height 100%
     width 4px
-    float right
     cursor col-resize
+
+.ag-ltr .ag-header-cell-resize
+    float right
+
+.ag-ltr .ag-pinned-right-header .ag-header-cell-resize
+    float left
+
+.ag-rtl .ag-header-cell-resize
+    float left
+
+.ag-rtl .ag-pinned-left-header .ag-header-cell-resize
+    float right
+
+.ag-ltr .ag-header-select-all
+    float left
+
+.ag-rtl .ag-header-select-all
+    float right
 
 .ag-header-expand-icon
     padding-left 4px
@@ -231,6 +294,7 @@ ag-grid-ng2
     display inline-block
     overflow hidden
     height 100%
+    position relative // otherwise the % width of children is not relative to this element
 
 .ag-pinned-right-floating-top
     float right
@@ -238,6 +302,7 @@ ag-grid-ng2
     display inline-block
     overflow hidden
     height 100%
+    position relative // otherwise the % width of children is not relative to this element
 
 .ag-floating-top-viewport
     box-sizing border-box
@@ -264,6 +329,7 @@ ag-grid-ng2
     display inline-block
     overflow hidden
     height 100%
+    position relative // otherwise the % width of children is not relative to this element
 
 .ag-pinned-right-floating-bottom
     float right
@@ -271,6 +337,7 @@ ag-grid-ng2
     display inline-block
     overflow hidden
     height 100%
+    position relative // otherwise the % width of children is not relative to this element
 
 .ag-floating-bottom-viewport
     box-sizing border-box
@@ -285,7 +352,6 @@ ag-grid-ng2
 
 .ag-pinned-left-cols-viewport
     float left
-    overflow hidden
 
 .ag-pinned-left-cols-container
     display inline-block
@@ -293,6 +359,20 @@ ag-grid-ng2
 
 .ag-pinned-right-cols-viewport
     float right
+
+// for LTR, we show scrolls on the right pinned only
+.ag-ltr .ag-pinned-right-cols-viewport
+    overflow-x hidden
+    overflow-y auto
+
+.ag-ltr .ag-pinned-left-cols-viewport
+    overflow hidden
+
+// for RTL, other way around, we show scrolls on left only
+.ag-rtl .ag-pinned-right-cols-viewport
+    overflow hidden
+
+.ag-rtl .ag-pinned-left-cols-viewport
     overflow-x hidden
     overflow-y auto
 
@@ -366,6 +446,9 @@ ag-grid-ng2
 .ag-row-no-animation
     transition background-color 0.1s
 
+.ag-row
+    box-sizing border-box
+
 .ag-scrolls .ag-row
     white-space nowrap
     position absolute
@@ -374,6 +457,14 @@ ag-grid-ng2
 .ag-no-scrolls .ag-row
 //    white-space: nowrap
     position relative // need at least some position for the cell height to work
+
+.ag-column-moving
+    .ag-cell
+        transition left 0.2s
+    .ag-header-cell
+        transition left 0.2s
+    .ag-header-group-cell
+        transition left 0.2s, width 0.2s
 
 .ag-column-drop
     width 100%
@@ -388,11 +479,22 @@ ag-grid-ng2
         display block
 
     .ag-column-drop-cell-button
-        float right
         line-height 16px
+
+.ag-ltr .ag-column-drop-vertical .ag-column-drop-cell-button
+    float right
+
+.ag-rtl .ag-column-drop-vertical .ag-column-drop-cell-button
+    float left
 
 .ag-column-drop-horizontal
     white-space: nowrap;
+
+    .ag-column-drop-cell
+        display inline-block
+
+    .ag-column-drop-empty-message
+        display inline-block
 
 .ag-cell
     display inline-block
@@ -502,6 +604,9 @@ ag-grid-ng2
 .ag-rich-select
     outline none
 
+.ag-rich-select-row
+    white-space nowrap
+
 .ag-rich-select-list
     width 200px
     height 200px
@@ -522,6 +627,18 @@ ag-grid-ng2
 .ag-filter-filter
     width 170px
     margin 4px
+
+.ag-floating-filter-body
+    input
+        width 100%
+        margin 0
+        height 19px
+
+.ag-floating-filter-full-body
+    input
+        width 100%
+        margin 0
+        height 19px
 
 .ag-filter-select
     width 110px
@@ -557,8 +674,13 @@ ag-grid-ng2
     display inline-block
 
 .ag-column-select-column
-    margin-left 14px
     white-space nowrap
+
+.ag-ltr .ag-column-select-column
+    margin-left 14px
+
+.ag-rtl .ag-column-select-column
+    margin-right 14px
 
 .ag-column-select-column-group
     white-space nowrap
@@ -568,7 +690,10 @@ ag-grid-ng2
 //    overflow: auto;
 
 .ag-hidden
-    display none
+    display none !important
+
+.ag-visibility-hidden
+    visibility hidden !important
 
 .ag-faded
     opacity 0.3

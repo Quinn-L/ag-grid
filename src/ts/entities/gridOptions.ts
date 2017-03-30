@@ -3,9 +3,13 @@ import {GridApi} from "../gridApi";
 import {ColumnApi} from "../columnController/columnController";
 import {Column} from "./column";
 import {IViewportDatasource} from "../interfaces/iViewportDatasource";
-import {ICellRendererFunc, ICellRenderer} from "../rendering/cellRenderers/iCellRenderer";
+import {ICellRendererFunc, ICellRendererComp} from "../rendering/cellRenderers/iCellRenderer";
 import {IAggFunc, ColGroupDef, ColDef} from "./colDef";
-import {IDatasource} from "../rowControllers/iDatasource";
+import {IDatasource} from "../rowModels/iDatasource";
+import {GridCellDef} from "./gridCell";
+import {IDateComp} from "../rendering/dateComponent";
+import {IEnterpriseDatasource} from "../interfaces/iEnterpriseDatasource";
+import {CsvExportParams, ProcessCellForExportParams} from "../exportParams";
 
 /****************************************************************
  * Don't forget to update ComponentUtil if changing this class. *
@@ -13,7 +17,7 @@ import {IDatasource} from "../rowControllers/iDatasource";
 export interface GridOptions {
 
     /****************************************************************
-     * Don't forget to update ComponentUtil if changing this class. *
+     * Don't forget to update ComponentUtil if changing this class. PLEASE!*
      ****************************************************************/
 
     // set once in init, can never change
@@ -28,9 +32,10 @@ export interface GridOptions {
     sortingOrder?: string[];
     suppressMultiSort?: boolean;
     suppressHorizontalScroll?: boolean;
+    suppressTabbing?: boolean;
     unSortIcon?: boolean;
     rowBuffer?: number;
-    enableRtlSupport?: boolean;
+    enableRtl?: boolean;
     enableColResize?: boolean;
     enableCellExpressions?: boolean;
     enableSorting?: boolean;
@@ -38,6 +43,7 @@ export interface GridOptions {
     enableFilter?: boolean;
     enableServerSideFilter?: boolean;
     enableStatusBar?: boolean;
+    enableGroupEdit?: boolean;
     suppressMiddleClickScrolls?: boolean;
     suppressPreventDefaultOnMouseWheel?: boolean;
     colWidth?: number;
@@ -45,6 +51,8 @@ export interface GridOptions {
     maxColWidth?: number;
     suppressMenuHide?: boolean;
     singleClickEdit?: boolean;
+    suppressClickEdit?: boolean;
+    stopEditingWhenGridLosesFocus?: boolean;
     debug?: boolean;
     icons?: any; // should be typed
     angularCompileRows?: boolean;
@@ -72,6 +80,7 @@ export interface GridOptions {
     rowGroupPanelShow?: string;
     pivotPanelShow?: string;
     suppressContextMenu?: boolean;
+    allowContextMenuWithControlKey?: boolean;
     suppressMenuFilterPanel?: boolean;
     suppressMenuMainPanel?: boolean;
     suppressMenuColumnPanel?: boolean;
@@ -87,14 +96,25 @@ export interface GridOptions {
     functionsPassive?: boolean;
     maxConcurrentDatasourceRequests?: number;
     maxPagesInCache?: number;
+
     paginationOverflowSize?: number;
-    paginationInitialRowCount?: number;
+    infiniteInitialRowCount?: number;
     paginationPageSize?: number;
+    infiniteBlockSize?: number;
+    paginationAutoPageSize?: number;
+    paginationStartPage?: number;
+    suppressPaginationPanel?: boolean;
+
+    pagination?: boolean;
     editType?: string;
     suppressTouch?: boolean;
+    embedFullWidthRows?: boolean;
+    //This is an array of ExcelStyle, but because that class lives on the enterprise project is referenced as any from the client project
+    excelStyles?: any[];
+    floatingFilter?: boolean;
 
     /****************************************************************
-     * Don't forget to update ComponentUtil if changing this class. *
+     * Don't forget to update ComponentUtil if changing this class. GOD DAMN IT!*
      ****************************************************************/
 
     // just set once
@@ -107,9 +127,10 @@ export interface GridOptions {
     // cellEditors?: {[key: string]: {new(): ICellEditor}};
     defaultColGroupDef?: ColGroupDef;
     defaultColDef?: ColDef;
+    defaultExportParams?: CsvExportParams;
 
     /****************************************************************
-     * Don't forget to update ComponentUtil if changing this class. *
+     * Don't forget to update ComponentUtil if changing this class. FOR FUCKS SAKE! *
      ****************************************************************/
 
     groupSuppressAutoColumn?: boolean;
@@ -119,12 +140,14 @@ export interface GridOptions {
     groupUseEntireRow?: boolean;
     groupRemoveSingleChildren?: boolean;
     groupSuppressRow?: boolean;
+    groupHideOpenParents?: boolean;
+    groupMultiAutoColumn?: boolean;
     groupSuppressBlankHeader?: boolean;
     forPrint?: boolean;
     groupColumnDef?: ColDef;
 
     /****************************************************************
-     * Don't forget to update ComponentUtil if changing this class. *
+     * Don't forget to update ComponentUtil if changing this class. YOU'VE BEEN WARNED*
      ****************************************************************/
 
     // changeable, but no immediate impact
@@ -152,6 +175,7 @@ export interface GridOptions {
     columnDefs?: (ColDef|ColGroupDef)[];
     datasource?: IDatasource;
     viewportDatasource?: IViewportDatasource;
+    enterpriseDatasource?: IEnterpriseDatasource;
     // in properties
     headerHeight?: number;
 
@@ -160,10 +184,12 @@ export interface GridOptions {
      ****************************************************************/
 
     // callbacks
-    groupRowRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    dateComponent?:{new(): IDateComp};
+    dateComponentFramework?: any;
+    groupRowRenderer?: {new(): ICellRendererComp} | ICellRendererFunc | string;
     groupRowRendererFramework?: any;
     groupRowRendererParams?: any;
-    groupRowInnerRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    groupRowInnerRenderer?: {new(): ICellRendererComp} | ICellRendererFunc | string;
     groupRowInnerRendererFramework?: any;
     isScrollLag?(): boolean;
     isExternalFilterPresent?(): boolean;
@@ -171,9 +197,12 @@ export interface GridOptions {
     getRowStyle?: Function;
     getRowClass?: Function;
     getRowHeight?: Function;
-    checkboxSelection?: (params: any)=> boolean;
+    sendToClipboard?: (params: any)=>void;
+    navigateToNextCell?: (params: NavigateToNextCellParams)=>GridCellDef;
+    tabToNextCell?: (params: TabToNextCellParams)=>GridCellDef;
+    getDocument?: ()=> Document;
 
-    fullWidthCellRenderer?: {new(): ICellRenderer} | ICellRendererFunc | string;
+    fullWidthCellRenderer?: {new(): ICellRendererComp} | ICellRendererFunc | string;
     fullWidthCellRendererFramework?: any;
     fullWidthCellRendererParams?: any;
     isFullWidthCell?(rowNode: RowNode): boolean;
@@ -231,6 +260,10 @@ export interface GridOptions {
     onCellContextMenu?(event?: any): void;
     onCellValueChanged?(event?: any): void;
     onRowValueChanged?(event?: any): void;
+    onRowEditingStarted?(event?: any): void;
+    onRowEditingStopped?(event?: any): void;
+    onCellEditingStarted?(event?: any): void;
+    onCellEditingStopped?(event?: any): void;
     onCellFocused?(event?: any): void;
     onRowSelected?(event?: any): void;
     onSelectionChanged?(event?: any): void;
@@ -238,9 +271,9 @@ export interface GridOptions {
     onFilterChanged?(event?: any): void;
     onAfterFilterChanged?(event?: any): void;
     onFilterModified?(event?: any): void;
-    onBeforeSortChanged?(event?: any): void;
-    onSortChanged?(event?: any): void;
-    onAfterSortChanged?(event?: any): void;
+    onBeforeSortChanged?(): void;
+    onSortChanged?(): void;
+    onAfterSortChanged?(): void;
     onVirtualRowRemoved?(event?: any): void;
     onRowClicked?(event?: any): void;
     onRowDoubleClicked?(event?: any): void;
@@ -250,7 +283,14 @@ export interface GridOptions {
     onDragStarted?(event?: any): void;
     onDragStopped?(event?: any): void;
     onItemsAdded?(event?: any): void;
-    onItemsRemove?(event?: any): void;
+    onItemsRemoved?(event?: any): void;
+
+
+
+
+    onPaginationReset?(event?: any): void;
+    onPaginationPageLoaded?(event?: any): void;
+    onPaginationPageRequested?(event?: any): void;
 
     /****************************************************************
      * Don't forget to update ComponentUtil if changing this class. *
@@ -325,18 +365,16 @@ export interface ProcessRowParams {
     context: any
 }
 
-export interface ProcessCellForExportParams {
-    value: any,
-    node: RowNode,
-    column: Column,
-    api: GridApi,
-    columnApi: ColumnApi,
-    context: any
+export interface NavigateToNextCellParams {
+    key: number;
+    previousCellDef: GridCellDef;
+    nextCellDef: GridCellDef;
+    event: KeyboardEvent;
 }
 
-export interface ProcessHeaderForExportParams {
-    column: Column,
-    api: GridApi,
-    columnApi: ColumnApi,
-    context: any
+export interface TabToNextCellParams {
+    backwards: boolean;
+    editing: boolean;
+    previousCellDef: GridCellDef;
+    nextCellDef: GridCellDef;
 }

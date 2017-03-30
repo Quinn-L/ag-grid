@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,10 +14,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var utils_1 = require("../utils");
 var constants_1 = require("../constants");
 var context_1 = require("../context/context");
 var gridCore_1 = require("../gridCore");
+var gridOptionsWrapper_1 = require("../gridOptionsWrapper");
 var PopupService = (function () {
     function PopupService() {
     }
@@ -27,26 +30,43 @@ var PopupService = (function () {
     PopupService.prototype.positionPopupForMenu = function (params) {
         var sourceRect = params.eventSource.getBoundingClientRect();
         var parentRect = this.getPopupParent().getBoundingClientRect();
-        var x = sourceRect.right - parentRect.left - 2;
         var y = sourceRect.top - parentRect.top;
-        var minWidth;
-        if (params.ePopup.clientWidth > 0) {
-            minWidth = params.ePopup.clientWidth;
-        }
-        else {
-            minWidth = 200;
-        }
+        y = this.keepYWithinBounds(params, y);
+        var minWidth = (params.ePopup.clientWidth > 0) ? params.ePopup.clientWidth : 200;
         var widthOfParent = parentRect.right - parentRect.left;
         var maxX = widthOfParent - minWidth;
-        if (x > maxX) {
-            // try putting menu to the left
-            x = sourceRect.left - parentRect.left - minWidth;
+        // the x position of the popup depends on RTL or LTR. for normal cases, LTR, we put the child popup
+        // to the right, unless it doesn't fit and we then put it to the left. for RTL it's the other way around,
+        // we try place it first to the left, and then if not to the right.
+        var x;
+        if (this.gridOptionsWrapper.isEnableRtl()) {
+            // for RTL, try left first
+            x = xLeftPosition();
+            if (x < 0) {
+                x = xRightPosition();
+            }
+            if (x > maxX) {
+                x = 0;
+            }
         }
-        if (x < 0) {
-            x = 0;
+        else {
+            // for LTR, try right first
+            x = xRightPosition();
+            if (x > maxX) {
+                x = xLeftPosition();
+            }
+            if (x < 0) {
+                x = 0;
+            }
         }
         params.ePopup.style.left = x + "px";
         params.ePopup.style.top = y + "px";
+        function xRightPosition() {
+            return sourceRect.right - parentRect.left - 2;
+        }
+        function xLeftPosition() {
+            return sourceRect.left - parentRect.left - minWidth;
+        }
     };
     PopupService.prototype.positionPopupUnderMouseEvent = function (params) {
         var parentRect = this.getPopupParent().getBoundingClientRect();
@@ -84,7 +104,6 @@ var PopupService = (function () {
         });
     };
     PopupService.prototype.positionPopup = function (params) {
-        var parentRect = this.getPopupParent().getBoundingClientRect();
         var x = params.x;
         var y = params.y;
         if (params.nudgeX) {
@@ -95,47 +114,55 @@ var PopupService = (function () {
         }
         // if popup is overflowing to the bottom, move it up
         if (params.keepWithinBounds) {
-            checkHorizontalOverflow();
-            checkVerticalOverflow();
+            x = this.keepXWithinBounds(params, x);
+            y = this.keepYWithinBounds(params, y);
         }
         params.ePopup.style.left = x + "px";
         params.ePopup.style.top = y + "px";
-        function checkHorizontalOverflow() {
-            var minWidth;
-            if (params.minWidth > 0) {
-                minWidth = params.minWidth;
-            }
-            else if (params.ePopup.clientWidth > 0) {
-                minWidth = params.ePopup.clientWidth;
-            }
-            else {
-                minWidth = 200;
-            }
-            var widthOfParent = parentRect.right - parentRect.left;
-            var maxX = widthOfParent - minWidth - 5;
-            if (x > maxX) {
-                x = maxX;
-            }
-            if (x < 0) {
-                x = 0;
-            }
+    };
+    PopupService.prototype.keepYWithinBounds = function (params, y) {
+        var parentRect = this.getPopupParent().getBoundingClientRect();
+        var minHeight;
+        if (params.ePopup.clientHeight > 0) {
+            minHeight = params.ePopup.clientHeight;
         }
-        function checkVerticalOverflow() {
-            var minHeight;
-            if (params.ePopup.clientWidth > 0) {
-                minHeight = params.ePopup.clientHeight;
-            }
-            else {
-                minHeight = 200;
-            }
-            var heightOfParent = parentRect.bottom - parentRect.top;
-            var maxY = heightOfParent - minHeight - 5;
-            if (y > maxY) {
-                y = maxY;
-            }
-            if (y < 0) {
-                y = 0;
-            }
+        else {
+            minHeight = 200;
+        }
+        var heightOfParent = parentRect.bottom - parentRect.top;
+        var maxY = heightOfParent - minHeight - 5;
+        if (y > maxY) {
+            return maxY;
+        }
+        else if (y < 0) {
+            return 0;
+        }
+        else {
+            return y;
+        }
+    };
+    PopupService.prototype.keepXWithinBounds = function (params, x) {
+        var parentRect = this.getPopupParent().getBoundingClientRect();
+        var minWidth;
+        if (params.minWidth > 0) {
+            minWidth = params.minWidth;
+        }
+        else if (params.ePopup.clientWidth > 0) {
+            minWidth = params.ePopup.clientWidth;
+        }
+        else {
+            minWidth = 200;
+        }
+        var widthOfParent = parentRect.right - parentRect.left;
+        var maxX = widthOfParent - minWidth - 5;
+        if (x > maxX) {
+            return maxX;
+        }
+        else if (x < 0) {
+            return 0;
+        }
+        else {
+            return x;
         }
     };
     //adds an element to a div, but also listens to background checking for clicks,
@@ -215,14 +242,17 @@ var PopupService = (function () {
         }
         return hidePopup;
     };
-    __decorate([
-        context_1.Autowired('gridCore'), 
-        __metadata('design:type', gridCore_1.GridCore)
-    ], PopupService.prototype, "gridCore", void 0);
-    PopupService = __decorate([
-        context_1.Bean('popupService'), 
-        __metadata('design:paramtypes', [])
-    ], PopupService);
     return PopupService;
-})();
+}());
+__decorate([
+    context_1.Autowired('gridCore'),
+    __metadata("design:type", gridCore_1.GridCore)
+], PopupService.prototype, "gridCore", void 0);
+__decorate([
+    context_1.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], PopupService.prototype, "gridOptionsWrapper", void 0);
+PopupService = __decorate([
+    context_1.Bean('popupService')
+], PopupService);
 exports.PopupService = PopupService;

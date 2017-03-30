@@ -1,4 +1,4 @@
-// Type definitions for ag-grid v7.0.2
+// Type definitions for ag-grid v9.0.0
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
 import { ColumnGroup } from "../entities/columnGroup";
@@ -83,7 +83,6 @@ export declare class ColumnApi {
     getDisplayNameForCol(column: any): string;
 }
 export declare class ColumnController {
-    static GROUP_AUTO_COLUMN_ID: string;
     private gridOptionsWrapper;
     private expressionService;
     private balancedColumnTreeBuilder;
@@ -93,6 +92,8 @@ export declare class ColumnController {
     private columnUtils;
     private gridPanel;
     private context;
+    private columnAnimationService;
+    private autoGroupColService;
     private aggFuncService;
     private primaryBalancedTree;
     private primaryHeaderRowCount;
@@ -118,20 +119,24 @@ export declare class ColumnController {
     private rowGroupColumns;
     private valueColumns;
     private pivotColumns;
-    private groupAutoColumn;
-    private groupAutoColumnActive;
+    private groupAutoColumns;
     private ready;
     private logger;
+    private autoGroupsNeedBuilding;
     private pivotMode;
-    private totalWidth;
+    private scrollWidth;
     private scrollPosition;
+    private bodyWidth;
+    private leftWidth;
+    private rightWidth;
+    private bodyWidthDirty;
     private viewportLeft;
     private viewportRight;
     init(): void;
-    private setViewportLeftAndRight();
+    private setVirtualViewportLeftAndRight();
     getDisplayedColumnsStartingAt(column: Column): Column[];
-    private checkDisplayedCenterColumns();
-    setWidthAndScrollPosition(totalWidth: number, scrollPosition: number): void;
+    private checkDisplayedVirtualColumns();
+    setVirtualViewportPosition(scrollWidth: number, scrollPosition: number): void;
     isPivotMode(): boolean;
     setPivotMode(pivotMode: boolean): void;
     getSecondaryPivotColumn(pivotKeys: string[], valueColKey: Column | ColDef | String): Column;
@@ -182,6 +187,8 @@ export declare class ColumnController {
     moveColumn(key: string | Column | ColDef, toIndex: number): void;
     moveColumnByIndex(fromIndex: number, toIndex: number): void;
     getBodyContainerWidth(): number;
+    getContainerWidth(pinned: string): number;
+    private updateBodyWidths();
     getValueColumns(): Column[];
     getPivotColumns(): Column[];
     isPivotActive(): boolean;
@@ -199,7 +206,7 @@ export declare class ColumnController {
     setColumnPinned(key: Column | ColDef | String, pinned: string | boolean): void;
     setColumnsPinned(keys: (Column | ColDef | String)[], pinned: string | boolean): void;
     private actionOnGridColumns(keys, action, createEvent);
-    getDisplayedColBefore(col: any): Column;
+    getDisplayedColBefore(col: Column): Column;
     getDisplayedColAfter(col: Column): Column;
     isPinningLeft(): boolean;
     isPinningRight(): boolean;
@@ -212,12 +219,14 @@ export declare class ColumnController {
     private sortColumnListUsingIndexes(indexes, colA, colB);
     private syncColumnWithNoState(column);
     private syncColumnWithStateItem(column, stateItem, rowGroupIndexes, pivotIndexes);
-    getGridColumns(keys: any[]): Column[];
+    getGridColumns(keys: (string | ColDef | Column)[]): Column[];
     private getColumns(keys, columnLookupCallback);
     getColumnWithValidation(key: string | ColDef | Column): Column;
     getPrimaryColumn(key: string | ColDef | Column): Column;
     getGridColumn(key: string | ColDef | Column): Column;
     private getColumn(key, columnList);
+    private getAutoColumn(key);
+    private columnsMatch(column, key);
     getDisplayNameForColumn(column: Column, location: string, includeAggFunc?: boolean): string;
     getDisplayNameForColumnGroup(columnGroup: ColumnGroup, location: string): string;
     private getHeaderName(colDef, column, columnGroup, location);
@@ -240,6 +249,7 @@ export declare class ColumnController {
     private clearDisplayedColumns();
     private updateGroupsAndDisplayedColumns();
     private updateDisplayedColumnsFromTrees();
+    private setupAllDisplayedColumns();
     private setLeftValues();
     private setLeftValuesOfColumns();
     private setLeftValuesOfGroups();
@@ -252,7 +262,9 @@ export declare class ColumnController {
     sizeColumnsToFit(gridWidth: any): void;
     private buildDisplayedTrees(visibleColumns);
     private updateGroups();
-    private createGroupAutoColumn();
+    getGroupAutoColumns(): Column[];
+    private createGroupAutoColumnsIfNeeded();
     private createValueColumns();
     private getWidthOfColsInList(columnList);
+    getGridBalancedTree(): OriginalColumnGroupChild[];
 }

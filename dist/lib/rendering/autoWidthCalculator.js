@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,13 +14,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var rowRenderer_1 = require("./rowRenderer");
 var gridPanel_1 = require("../gridPanel/gridPanel");
 var context_1 = require("../context/context");
 var context_2 = require("../context/context");
 var headerRenderer_1 = require("../headerRendering/headerRenderer");
-var renderedHeaderCell_1 = require("../headerRendering/renderedHeaderCell");
+var renderedHeaderCell_1 = require("../headerRendering/deprecated/renderedHeaderCell");
 var gridOptionsWrapper_1 = require("../gridOptionsWrapper");
+var headerWrapperComp_1 = require("../headerRendering/header/headerWrapperComp");
 var AutoWidthCalculator = (function () {
     function AutoWidthCalculator() {
     }
@@ -28,9 +31,9 @@ var AutoWidthCalculator = (function () {
     // as we don't need it any more.
     // drawback: only the cells visible on the screen are considered
     AutoWidthCalculator.prototype.getPreferredWidthForColumn = function (column) {
-        var renderedHeaderCell = this.getHeaderCellForColumn(column);
+        var eHeaderCell = this.getHeaderCellForColumn(column);
         // cell isn't visible
-        if (!renderedHeaderCell) {
+        if (!eHeaderCell) {
             return -1;
         }
         var eDummyContainer = document.createElement('span');
@@ -47,7 +50,7 @@ var AutoWidthCalculator = (function () {
         // we only consider the lowest level cell, not the group cell. in 99% of the time, this
         // will be enough. if we consider groups, then it gets to complicated for what it's worth,
         // as the groups can span columns and this class only considers one column at a time.
-        this.cloneItemIntoDummy(renderedHeaderCell.getGui(), eDummyContainer);
+        this.cloneItemIntoDummy(eHeaderCell, eDummyContainer);
         // at this point, all the clones are lined up vertically with natural widths. the dummy
         // container will have a width wide enough just to fit the largest.
         var dummyContainerWidth = eDummyContainer.offsetWidth;
@@ -61,17 +64,23 @@ var AutoWidthCalculator = (function () {
         return dummyContainerWidth + autoSizePadding;
     };
     AutoWidthCalculator.prototype.getHeaderCellForColumn = function (column) {
-        var renderedHeaderCell = null;
+        var comp = null;
         // find the rendered header cell
         this.headerRenderer.forEachHeaderElement(function (headerElement) {
             if (headerElement instanceof renderedHeaderCell_1.RenderedHeaderCell) {
                 var currentCell = headerElement;
                 if (currentCell.getColumn() === column) {
-                    renderedHeaderCell = currentCell;
+                    comp = currentCell;
+                }
+            }
+            else if (headerElement instanceof headerWrapperComp_1.HeaderWrapperComp) {
+                var headerWrapperComp = headerElement;
+                if (headerWrapperComp.getColumn() === column) {
+                    comp = headerWrapperComp;
                 }
             }
         });
-        return renderedHeaderCell;
+        return comp ? comp.getGui() : null;
     };
     AutoWidthCalculator.prototype.putRowCellsIntoDummyContainer = function (column, eDummyContainer) {
         var _this = this;
@@ -101,26 +110,25 @@ var AutoWidthCalculator = (function () {
         eCloneParent.appendChild(eCellClone);
         eDummyContainer.appendChild(eCloneParent);
     };
-    __decorate([
-        context_2.Autowired('rowRenderer'), 
-        __metadata('design:type', rowRenderer_1.RowRenderer)
-    ], AutoWidthCalculator.prototype, "rowRenderer", void 0);
-    __decorate([
-        context_2.Autowired('headerRenderer'), 
-        __metadata('design:type', headerRenderer_1.HeaderRenderer)
-    ], AutoWidthCalculator.prototype, "headerRenderer", void 0);
-    __decorate([
-        context_2.Autowired('gridPanel'), 
-        __metadata('design:type', gridPanel_1.GridPanel)
-    ], AutoWidthCalculator.prototype, "gridPanel", void 0);
-    __decorate([
-        context_2.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], AutoWidthCalculator.prototype, "gridOptionsWrapper", void 0);
-    AutoWidthCalculator = __decorate([
-        context_1.Bean('autoWidthCalculator'), 
-        __metadata('design:paramtypes', [])
-    ], AutoWidthCalculator);
     return AutoWidthCalculator;
-})();
+}());
+__decorate([
+    context_2.Autowired('rowRenderer'),
+    __metadata("design:type", rowRenderer_1.RowRenderer)
+], AutoWidthCalculator.prototype, "rowRenderer", void 0);
+__decorate([
+    context_2.Autowired('headerRenderer'),
+    __metadata("design:type", headerRenderer_1.HeaderRenderer)
+], AutoWidthCalculator.prototype, "headerRenderer", void 0);
+__decorate([
+    context_2.Autowired('gridPanel'),
+    __metadata("design:type", gridPanel_1.GridPanel)
+], AutoWidthCalculator.prototype, "gridPanel", void 0);
+__decorate([
+    context_2.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], AutoWidthCalculator.prototype, "gridOptionsWrapper", void 0);
+AutoWidthCalculator = __decorate([
+    context_1.Bean('autoWidthCalculator')
+], AutoWidthCalculator);
 exports.AutoWidthCalculator = AutoWidthCalculator;

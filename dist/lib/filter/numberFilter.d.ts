@@ -1,39 +1,42 @@
-// Type definitions for ag-grid v7.0.2
+// Type definitions for ag-grid v9.0.0
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
-import { IFilter, IFilterParams, IDoesFilterPassParams } from "../interfaces/iFilter";
-export declare class NumberFilter implements IFilter {
+import { IFilterParams, SerializedFilter } from "../interfaces/iFilter";
+import { Comparator, ScalarBaseFilter } from "./baseFilter";
+export interface SerializedNumberFilter extends SerializedFilter {
+    filter: number;
+    filterTo: number;
+    type: string;
+}
+export declare class NumberFilter extends ScalarBaseFilter<number, IFilterParams, SerializedNumberFilter> {
     static EQUALS: string;
     static NOT_EQUAL: string;
-    static LESS_THAN: string;
     static LESS_THAN_OR_EQUAL: string;
     static GREATER_THAN: string;
     static GREATER_THAN_OR_EQUAL: string;
-    private filterParams;
-    private gridOptionsWrapper;
-    private filterNumber;
-    private filterType;
-    private applyActive;
-    private newRowsActionKeep;
-    private eGui;
+    static IN_RANGE: string;
+    private eNumberToPanel;
+    filterNumber: any;
+    filterNumberTo: any;
+    private eFilterToTextField;
     private eFilterTextField;
-    private eTypeSelect;
-    private eApplyButton;
-    init(params: IFilterParams): void;
-    onNewRowsLoaded(): void;
+    static LESS_THAN: string;
+    modelFromFloatingFilter(from: string): SerializedNumberFilter;
+    getApplicableFilterTypes(): string[];
+    bodyTemplate(): string;
+    initialiseFilterBodyUi(): void;
     afterGuiAttached(): void;
-    doesFilterPass(params: IDoesFilterPassParams): boolean;
-    getGui(): HTMLElement;
-    isFilterActive(): boolean;
-    private createTemplate();
-    private createGui();
-    private setupApply();
-    private onTypeChanged();
-    private filterChanged();
-    private onFilterChanged();
-    setType(type: string): void;
+    comparator(): Comparator<number>;
+    private onTextFieldsChanged();
+    filterValues(): number | number[];
+    private asNumber(value);
+    private stringToFloat(value);
     setFilter(filter: any): void;
+    setFilterTo(filter: any): void;
     getFilter(): any;
-    getModel(): any;
-    setModel(model: any): void;
+    serialize(): SerializedNumberFilter;
+    parse(model: SerializedNumberFilter): void;
+    refreshFilterBodyUi(): void;
+    resetState(): void;
+    setType(filterType: string): void;
 }

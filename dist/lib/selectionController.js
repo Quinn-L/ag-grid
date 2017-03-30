@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -16,7 +17,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var utils_1 = require('./utils');
+Object.defineProperty(exports, "__esModule", { value: true });
+var utils_1 = require("./utils");
 var context_1 = require("./context/context");
 var context_2 = require("./context/context");
 var logger_1 = require("./logger");
@@ -95,10 +97,11 @@ var SelectionController = (function () {
     SelectionController.prototype.clearOtherNodes = function (rowNodeToKeepSelected) {
         var _this = this;
         var groupsToRefresh = {};
+        var updatedCount = 0;
         utils_1.Utils.iterateObject(this.selectedNodes, function (key, otherRowNode) {
             if (otherRowNode && otherRowNode.id !== rowNodeToKeepSelected.id) {
                 var rowNode = _this.selectedNodes[otherRowNode.id];
-                rowNode.setSelectedParams({ newValue: false, clearSelection: false, tailingNodeInSequence: true });
+                updatedCount += rowNode.setSelectedParams({ newValue: false, clearSelection: false, tailingNodeInSequence: true });
                 if (_this.groupSelectsChildren && otherRowNode.parent) {
                     groupsToRefresh[otherRowNode.parent.id] = otherRowNode.parent;
                 }
@@ -107,6 +110,7 @@ var SelectionController = (function () {
         utils_1.Utils.iterateObject(groupsToRefresh, function (key, group) {
             group.calculateSelectedFromChildren();
         });
+        return updatedCount;
     };
     SelectionController.prototype.onRowSelected = function (event) {
         var rowNode = event.node;
@@ -206,29 +210,42 @@ var SelectionController = (function () {
         });
         return count === 0;
     };
-    SelectionController.prototype.deselectAllRowNodes = function () {
-        utils_1.Utils.iterateObject(this.selectedNodes, function (nodeId, rowNode) {
-            if (rowNode) {
-                rowNode.selectThisNode(false);
-            }
-        });
+    SelectionController.prototype.deselectAllRowNodes = function (justFiltered) {
+        if (justFiltered === void 0) { justFiltered = false; }
+        var inMemoryRowModel = this.rowModel;
+        var callback = function (rowNode) { return rowNode.selectThisNode(false); };
+        // execute on all nodes in the model. if we are doing pagination, only
+        // the current page is used, thus if we 'deselect all' while on page 2,
+        // any selections on page 1 are left as is.
+        if (justFiltered) {
+            inMemoryRowModel.forEachNodeAfterFilter(callback);
+        }
+        else {
+            inMemoryRowModel.forEachNode(callback);
+        }
         // the above does not clean up the parent rows if they are selected
         if (this.rowModel.getType() === constants_1.Constants.ROW_MODEL_TYPE_NORMAL && this.groupSelectsChildren) {
             this.updateGroupsFromChildrenSelections();
         }
-        // we should not have to do this, as deselecting the nodes fires events
-        // that we pick up, however it's good to clean it down, as we are still
-        // left with entries pointing to 'undefined'
-        this.selectedNodes = {};
         this.eventService.dispatchEvent(events_1.Events.EVENT_SELECTION_CHANGED);
     };
-    SelectionController.prototype.selectAllRowNodes = function () {
+    SelectionController.prototype.selectAllRowNodes = function (justFiltered) {
+        if (justFiltered === void 0) { justFiltered = false; }
         if (this.rowModel.getType() !== constants_1.Constants.ROW_MODEL_TYPE_NORMAL) {
-            throw 'selectAll only available with normal row model, ie not virtual pagination';
+            throw "selectAll only available with normal row model, ie not " + this.rowModel.getType();
         }
-        this.rowModel.forEachNode(function (rowNode) {
-            rowNode.selectThisNode(true);
-        });
+        var inMemoryRowModel = this.rowModel;
+        var callback = function (rowNode) { return rowNode.selectThisNode(true); };
+        if (justFiltered) {
+            inMemoryRowModel.forEachNodeAfterFilter(callback);
+        }
+        else {
+            inMemoryRowModel.forEachNode(callback);
+        }
+        // the above does not clean up the parent rows if they are selected
+        if (this.rowModel.getType() === constants_1.Constants.ROW_MODEL_TYPE_NORMAL && this.groupSelectsChildren) {
+            this.updateGroupsFromChildrenSelections();
+        }
         this.eventService.dispatchEvent(events_1.Events.EVENT_SELECTION_CHANGED);
     };
     // Deprecated method
@@ -249,34 +266,33 @@ var SelectionController = (function () {
         var node = this.rowModel.getRow(index);
         this.selectNode(node, tryMulti);
     };
-    __decorate([
-        context_3.Autowired('eventService'), 
-        __metadata('design:type', eventService_1.EventService)
-    ], SelectionController.prototype, "eventService", void 0);
-    __decorate([
-        context_3.Autowired('rowModel'), 
-        __metadata('design:type', Object)
-    ], SelectionController.prototype, "rowModel", void 0);
-    __decorate([
-        context_3.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], SelectionController.prototype, "gridOptionsWrapper", void 0);
-    __decorate([
-        __param(0, context_2.Qualifier('loggerFactory')), 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', [logger_1.LoggerFactory]), 
-        __metadata('design:returntype', void 0)
-    ], SelectionController.prototype, "setBeans", null);
-    __decorate([
-        context_4.PostConstruct, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], SelectionController.prototype, "init", null);
-    SelectionController = __decorate([
-        context_1.Bean('selectionController'), 
-        __metadata('design:paramtypes', [])
-    ], SelectionController);
     return SelectionController;
-})();
+}());
+__decorate([
+    context_3.Autowired('eventService'),
+    __metadata("design:type", eventService_1.EventService)
+], SelectionController.prototype, "eventService", void 0);
+__decorate([
+    context_3.Autowired('rowModel'),
+    __metadata("design:type", Object)
+], SelectionController.prototype, "rowModel", void 0);
+__decorate([
+    context_3.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], SelectionController.prototype, "gridOptionsWrapper", void 0);
+__decorate([
+    __param(0, context_2.Qualifier('loggerFactory')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [logger_1.LoggerFactory]),
+    __metadata("design:returntype", void 0)
+], SelectionController.prototype, "setBeans", null);
+__decorate([
+    context_4.PostConstruct,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SelectionController.prototype, "init", null);
+SelectionController = __decorate([
+    context_1.Bean('selectionController')
+], SelectionController);
 exports.SelectionController = SelectionController;

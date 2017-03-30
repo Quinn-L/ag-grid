@@ -1,8 +1,8 @@
-// Type definitions for ag-grid v7.0.2
+// Type definitions for ag-grid v9.0.0
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
 import { Column } from "../entities/column";
-import { IFilter } from "../interfaces/iFilter";
+import { IFilterComp } from "../interfaces/iFilter";
 export declare class FilterManager {
     private $compile;
     private $scope;
@@ -15,6 +15,7 @@ export declare class FilterManager {
     private eventService;
     private enterprise;
     private context;
+    private componentProvider;
     private allFilters;
     private quickFilter;
     private advancedFilterPresent;
@@ -26,6 +27,7 @@ export declare class FilterManager {
     private setModelOnFilterWrapper(filter, newModel);
     getFilterModel(): any;
     isAdvancedFilterPresent(): boolean;
+    private setAdvancedFilterPresent();
     private updateFilterFlagInColumns();
     isAnyFilterPresent(): boolean;
     private doesFilterPass(node, filterToSkip?);
@@ -39,7 +41,7 @@ export declare class FilterManager {
     private aggregateRowForQuickFilter(node);
     private onNewRowsLoaded();
     private createValueGetter(column);
-    getFilterComponent(column: Column): IFilter;
+    getFilterComponent(column: Column): IFilterComp;
     getOrCreateFilterWrapper(column: Column): FilterWrapper;
     private createFilterInstance(column);
     private checkFilterHasAllMandatoryMethods(filterInstance, column);
@@ -55,7 +57,7 @@ export declare class FilterManager {
 }
 export interface FilterWrapper {
     column: Column;
-    filter: IFilter;
+    filter: IFilterComp;
     scope: any;
     gui: HTMLElement;
 }

@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var dragAndDropService_1 = require("../dragAndDrop/dragAndDropService");
 var context_1 = require("../context/context");
 var moveColumnController_1 = require("./moveColumnController");
@@ -32,7 +34,7 @@ var BodyDropTarget = (function () {
         return this.eContainer;
     };
     BodyDropTarget.prototype.init = function () {
-        this.moveColumnController = new moveColumnController_1.MoveColumnController(this.pinned);
+        this.moveColumnController = new moveColumnController_1.MoveColumnController(this.pinned, this.eContainer);
         this.context.wireBean(this.moveColumnController);
         this.bodyDropPivotTarget = new bodyDropPivotTarget_1.BodyDropPivotTarget(this.pinned);
         this.context.wireBean(this.bodyDropPivotTarget);
@@ -86,28 +88,28 @@ var BodyDropTarget = (function () {
     BodyDropTarget.prototype.onDragStop = function (params) {
         this.currentDropListener.onDragStop(params);
     };
-    __decorate([
-        context_1.Autowired('context'), 
-        __metadata('design:type', context_1.Context)
-    ], BodyDropTarget.prototype, "context", void 0);
-    __decorate([
-        context_1.Autowired('gridPanel'), 
-        __metadata('design:type', gridPanel_1.GridPanel)
-    ], BodyDropTarget.prototype, "gridPanel", void 0);
-    __decorate([
-        context_1.Autowired('dragAndDropService'), 
-        __metadata('design:type', dragAndDropService_1.DragAndDropService)
-    ], BodyDropTarget.prototype, "dragAndDropService", void 0);
-    __decorate([
-        context_1.Autowired('columnController'), 
-        __metadata('design:type', columnController_1.ColumnController)
-    ], BodyDropTarget.prototype, "columnController", void 0);
-    __decorate([
-        context_1.PostConstruct, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], BodyDropTarget.prototype, "init", null);
     return BodyDropTarget;
-})();
+}());
+__decorate([
+    context_1.Autowired('context'),
+    __metadata("design:type", context_1.Context)
+], BodyDropTarget.prototype, "context", void 0);
+__decorate([
+    context_1.Autowired('gridPanel'),
+    __metadata("design:type", gridPanel_1.GridPanel)
+], BodyDropTarget.prototype, "gridPanel", void 0);
+__decorate([
+    context_1.Autowired('dragAndDropService'),
+    __metadata("design:type", dragAndDropService_1.DragAndDropService)
+], BodyDropTarget.prototype, "dragAndDropService", void 0);
+__decorate([
+    context_1.Autowired('columnController'),
+    __metadata("design:type", columnController_1.ColumnController)
+], BodyDropTarget.prototype, "columnController", void 0);
+__decorate([
+    context_1.PostConstruct,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], BodyDropTarget.prototype, "init", null);
 exports.BodyDropTarget = BodyDropTarget;

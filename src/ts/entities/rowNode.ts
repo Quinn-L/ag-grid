@@ -10,7 +10,7 @@ import {Autowired, Context} from "../context/context";
 import {IRowModel} from "../interfaces/iRowModel";
 import {Constants} from "../constants";
 import {Utils as _} from "../utils";
-import {InMemoryRowModel} from "../rowControllers/inMemory/inMemoryRowModel";
+import {InMemoryRowModel} from "../rowModels/inMemory/inMemoryRowModel";
 
 export interface SetSelectedParams {
     // true or false, whatever you want to set selection to
@@ -36,6 +36,7 @@ export class RowNode {
     public static EVENT_TOP_CHANGED = 'topChanged';
     public static EVENT_ROW_INDEX_CHANGED = 'rowIndexChanged';
     public static EVENT_EXPANDED_CHANGED = 'expandedChanged';
+    public static EVENT_LOADING_CHANGED = 'loadingChanged';
 
     @Autowired('eventService') private mainEventService: EventService;
     @Autowired('gridOptionsWrapper') private gridOptionsWrapper: GridOptionsWrapper;
@@ -85,6 +86,8 @@ export class RowNode {
     public field: string;
     /** Groups only - The key for the group eg Ireland, UK, USA */
     public key: any;
+    /** True if rowNode is loading, used by Enterprise row model */
+    public loading: boolean;
 
     /** All user provided nodes */
     public allLeafChildren: RowNode[];
@@ -105,8 +108,7 @@ export class RowNode {
     public expanded: boolean;
     /** Groups only - If doing footers, reference to the footer node for this group */
     public sibling: RowNode;
-    /** Not to be used, internal temporary map used by the grid when creating groups */
-    public _childrenMap: {};
+
     /** The height, in pixels, of this row */
     public rowHeight: number;
     /** The top pixel for this row */
@@ -175,6 +177,14 @@ export class RowNode {
             }
         } else {
             this.id = id;
+        }
+    }
+
+    public setLoading(loading: boolean): void {
+        if (this.loading === loading) { return; }
+        this.loading = loading;
+        if (this.eventService) {
+            this.eventService.dispatchEvent(RowNode.EVENT_LOADING_CHANGED);
         }
     }
 
@@ -314,6 +324,10 @@ export class RowNode {
         });
     }
 
+    public isFloating(): boolean {
+        return this.floating === Constants.FLOATING_TOP || this.floating === Constants.FLOATING_BOTTOM;
+    }
+
     // to make calling code more readable, this is the same method as setSelected except it takes names parameters
     public setSelectedParams(params: SetSelectedParams): number {
 
@@ -373,7 +387,7 @@ export class RowNode {
         if (actionWasOnThisNode) {
 
             if (newValue && (clearSelection || !this.gridOptionsWrapper.isRowSelectionMulti())) {
-                this.selectionController.clearOtherNodes(this);
+                updatedCount += this.selectionController.clearOtherNodes(this);
             }
 
             // only if we selected something, then update groups and fire events
@@ -506,7 +520,7 @@ export class RowNode {
         }
 
         var event: any = {node: this};
-        this.mainEventService.dispatchEvent(Events.EVENT_ROW_SELECTED, event)
+        this.mainEventService.dispatchEvent(Events.EVENT_ROW_SELECTED, event);
 
         return true;
     }

@@ -1,10 +1,12 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
-var utils_1 = require('../utils');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var utils_1 = require("../utils");
 var BorderLayout = (function () {
     function BorderLayout(params) {
         this.centerHeightLastTime = -1;
@@ -224,32 +226,32 @@ var BorderLayout = (function () {
             this.hideOverlay();
         }
     };
-    BorderLayout.TEMPLATE_FULL_HEIGHT = '<div class="ag-bl ag-bl-full-height">' +
-        '  <div class="ag-bl-west ag-bl-full-height-west" id="west"></div>' +
-        '  <div class="ag-bl-east ag-bl-full-height-east" id="east"></div>' +
-        '  <div class="ag-bl-center ag-bl-full-height-center" id="center"></div>' +
-        '  <div class="ag-bl-overlay" id="overlay"></div>' +
-        '</div>';
-    BorderLayout.TEMPLATE_NORMAL = '<div class="ag-bl ag-bl-normal">' +
-        '  <div id="north"></div>' +
-        '  <div class="ag-bl-center-row ag-bl-normal-center-row" id="centerRow">' +
-        '    <div class="ag-bl-west ag-bl-normal-west" id="west"></div>' +
-        '    <div class="ag-bl-east ag-bl-normal-east" id="east"></div>' +
-        '    <div class="ag-bl-center ag-bl-normal-center" id="center"></div>' +
-        '  </div>' +
-        '  <div id="south"></div>' +
-        '  <div class="ag-bl-overlay" id="overlay"></div>' +
-        '</div>';
-    BorderLayout.TEMPLATE_DONT_FILL = '<div class="ag-bl ag-bl-dont-fill">' +
-        '  <div id="north"></div>' +
-        '  <div id="centerRow">' +
-        '    <div id="west"></div>' +
-        '    <div id="east"></div>' +
-        '    <div id="center"></div>' +
-        '  </div>' +
-        '  <div id="south"></div>' +
-        '  <div class="ag-bl-overlay" id="overlay"></div>' +
-        '</div>';
     return BorderLayout;
-})();
+}());
+BorderLayout.TEMPLATE_FULL_HEIGHT = '<div class="ag-bl ag-bl-full-height">' +
+    '  <div class="ag-bl-west ag-bl-full-height-west" id="west"></div>' +
+    '  <div class="ag-bl-east ag-bl-full-height-east" id="east"></div>' +
+    '  <div class="ag-bl-center ag-bl-full-height-center" id="center"></div>' +
+    '  <div class="ag-bl-overlay" id="overlay"></div>' +
+    '</div>';
+BorderLayout.TEMPLATE_NORMAL = '<div class="ag-bl ag-bl-normal">' +
+    '  <div id="north"></div>' +
+    '  <div class="ag-bl-center-row ag-bl-normal-center-row" id="centerRow">' +
+    '    <div class="ag-bl-west ag-bl-normal-west" id="west"></div>' +
+    '    <div class="ag-bl-east ag-bl-normal-east" id="east"></div>' +
+    '    <div class="ag-bl-center ag-bl-normal-center" id="center"></div>' +
+    '  </div>' +
+    '  <div id="south"></div>' +
+    '  <div class="ag-bl-overlay" id="overlay"></div>' +
+    '</div>';
+BorderLayout.TEMPLATE_DONT_FILL = '<div class="ag-bl ag-bl-dont-fill">' +
+    '  <div id="north"></div>' +
+    '  <div id="centerRow">' +
+    '    <div id="west"></div>' +
+    '    <div id="east"></div>' +
+    '    <div id="center"></div>' +
+    '  </div>' +
+    '  <div id="south"></div>' +
+    '  <div class="ag-bl-overlay" id="overlay"></div>' +
+    '</div>';
 exports.BorderLayout = BorderLayout;

@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -16,6 +17,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var logger_1 = require("../logger");
 var context_1 = require("../context/context");
 var utils_1 = require("../utils");
@@ -24,22 +26,22 @@ var svgFactory_1 = require("../svgFactory");
 var dragService_1 = require("./dragService");
 var columnController_1 = require("../columnController/columnController");
 var svgFactory = svgFactory_1.SvgFactory.getInstance();
+var DragSourceType;
 (function (DragSourceType) {
     DragSourceType[DragSourceType["ToolPanel"] = 0] = "ToolPanel";
     DragSourceType[DragSourceType["HeaderCell"] = 1] = "HeaderCell";
-})(exports.DragSourceType || (exports.DragSourceType = {}));
-var DragSourceType = exports.DragSourceType;
+})(DragSourceType = exports.DragSourceType || (exports.DragSourceType = {}));
+var VDirection;
 (function (VDirection) {
     VDirection[VDirection["Up"] = 0] = "Up";
     VDirection[VDirection["Down"] = 1] = "Down";
-})(exports.VDirection || (exports.VDirection = {}));
-var VDirection = exports.VDirection;
+})(VDirection = exports.VDirection || (exports.VDirection = {}));
+var HDirection;
 (function (HDirection) {
     HDirection[HDirection["Left"] = 0] = "Left";
     HDirection[HDirection["Right"] = 1] = "Right";
-})(exports.HDirection || (exports.HDirection = {}));
-var HDirection = exports.HDirection;
-var DragAndDropService = (function () {
+})(HDirection = exports.HDirection || (exports.HDirection = {}));
+var DragAndDropService = DragAndDropService_1 = (function () {
     function DragAndDropService() {
         this.dragSourceAndParamsList = [];
         this.dropTargets = [];
@@ -58,10 +60,6 @@ var DragAndDropService = (function () {
     };
     DragAndDropService.prototype.setBeans = function (loggerFactory) {
         this.logger = loggerFactory.create('OldToolPanelDragAndDropService');
-        this.eBody = document.querySelector('body');
-        if (!this.eBody) {
-            console.warn('ag-Grid: could not find document body, it is needed for dragging columns');
-        }
     };
     DragAndDropService.prototype.addDragSource = function (dragSource, allowTouch) {
         if (allowTouch === void 0) { allowTouch = false; }
@@ -230,8 +228,9 @@ var DragAndDropService = (function () {
         var top = event.pageY - (ghostHeight / 2);
         // horizontally, place cursor just right of icon
         var left = event.pageX - 30;
-        var windowScrollY = window.pageYOffset || document.documentElement.scrollTop;
-        var windowScrollX = window.pageXOffset || document.documentElement.scrollLeft;
+        var usrDocument = this.gridOptionsWrapper.getDocument();
+        var windowScrollY = window.pageYOffset || usrDocument.documentElement.scrollTop;
+        var windowScrollX = window.pageXOffset || usrDocument.documentElement.scrollLeft;
         // check ghost is not positioned outside of the browser
         if (browserWidth > 0) {
             if ((left + this.eGhost.clientWidth) > (browserWidth + windowScrollX)) {
@@ -253,13 +252,13 @@ var DragAndDropService = (function () {
         this.eGhost.style.top = top + 'px';
     };
     DragAndDropService.prototype.removeGhost = function () {
-        if (this.eGhost) {
-            this.eBody.removeChild(this.eGhost);
+        if (this.eGhost && this.eGhostParent) {
+            this.eGhostParent.removeChild(this.eGhost);
         }
         this.eGhost = null;
     };
     DragAndDropService.prototype.createGhost = function () {
-        this.eGhost = utils_1.Utils.loadTemplate(DragAndDropService.GHOST_TEMPLATE);
+        this.eGhost = utils_1.Utils.loadTemplate(DragAndDropService_1.GHOST_TEMPLATE);
         this.eGhostIcon = this.eGhost.querySelector('.ag-dnd-ghost-icon');
         this.setGhostIcon(null);
         var eText = this.eGhost.querySelector('.ag-dnd-ghost-label');
@@ -267,38 +266,45 @@ var DragAndDropService = (function () {
         this.eGhost.style.height = this.gridOptionsWrapper.getHeaderHeight() + 'px';
         this.eGhost.style.top = '20px';
         this.eGhost.style.left = '20px';
-        this.eBody.appendChild(this.eGhost);
+        var usrDocument = this.gridOptionsWrapper.getDocument();
+        this.eGhostParent = usrDocument.querySelector('body');
+        if (!this.eGhostParent) {
+            console.warn('ag-Grid: could not find document body, it is needed for dragging columns');
+        }
+        else {
+            this.eGhostParent.appendChild(this.eGhost);
+        }
     };
     DragAndDropService.prototype.setGhostIcon = function (iconName, shake) {
         if (shake === void 0) { shake = false; }
         utils_1.Utils.removeAllChildren(this.eGhostIcon);
         var eIcon;
         switch (iconName) {
-            case DragAndDropService.ICON_ADD:
+            case DragAndDropService_1.ICON_ADD:
                 eIcon = this.ePlusIcon;
                 break;
-            case DragAndDropService.ICON_PINNED:
+            case DragAndDropService_1.ICON_PINNED:
                 eIcon = this.ePinnedIcon;
                 break;
-            case DragAndDropService.ICON_MOVE:
+            case DragAndDropService_1.ICON_MOVE:
                 eIcon = this.eMoveIcon;
                 break;
-            case DragAndDropService.ICON_LEFT:
+            case DragAndDropService_1.ICON_LEFT:
                 eIcon = this.eLeftIcon;
                 break;
-            case DragAndDropService.ICON_RIGHT:
+            case DragAndDropService_1.ICON_RIGHT:
                 eIcon = this.eRightIcon;
                 break;
-            case DragAndDropService.ICON_GROUP:
+            case DragAndDropService_1.ICON_GROUP:
                 eIcon = this.eGroupIcon;
                 break;
-            case DragAndDropService.ICON_AGGREGATE:
+            case DragAndDropService_1.ICON_AGGREGATE:
                 eIcon = this.eAggregateIcon;
                 break;
-            case DragAndDropService.ICON_PIVOT:
+            case DragAndDropService_1.ICON_PIVOT:
                 eIcon = this.ePivotIcon;
                 break;
-            case DragAndDropService.ICON_NOT_ALLOWED:
+            case DragAndDropService_1.ICON_NOT_ALLOWED:
                 eIcon = this.eDropNotAllowedIcon;
                 break;
             default:
@@ -308,54 +314,54 @@ var DragAndDropService = (function () {
         this.eGhostIcon.appendChild(eIcon);
         utils_1.Utils.addOrRemoveCssClass(this.eGhostIcon, 'ag-shake-left-to-right', shake);
     };
-    DragAndDropService.ICON_PINNED = 'pinned';
-    DragAndDropService.ICON_ADD = 'add';
-    DragAndDropService.ICON_MOVE = 'move';
-    DragAndDropService.ICON_LEFT = 'left';
-    DragAndDropService.ICON_RIGHT = 'right';
-    DragAndDropService.ICON_GROUP = 'group';
-    DragAndDropService.ICON_AGGREGATE = 'aggregate';
-    DragAndDropService.ICON_PIVOT = 'pivot';
-    DragAndDropService.ICON_NOT_ALLOWED = 'notAllowed';
-    DragAndDropService.GHOST_TEMPLATE = '<div class="ag-dnd-ghost">' +
-        '  <span class="ag-dnd-ghost-icon ag-shake-left-to-right"></span>' +
-        '  <div class="ag-dnd-ghost-label">' +
-        '  </div>' +
-        '</div>';
-    __decorate([
-        context_1.Autowired('gridOptionsWrapper'), 
-        __metadata('design:type', gridOptionsWrapper_1.GridOptionsWrapper)
-    ], DragAndDropService.prototype, "gridOptionsWrapper", void 0);
-    __decorate([
-        context_1.Autowired('dragService'), 
-        __metadata('design:type', dragService_1.DragService)
-    ], DragAndDropService.prototype, "dragService", void 0);
-    __decorate([
-        context_1.Autowired('columnController'), 
-        __metadata('design:type', columnController_1.ColumnController)
-    ], DragAndDropService.prototype, "columnController", void 0);
-    __decorate([
-        context_1.PostConstruct, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], DragAndDropService.prototype, "init", null);
-    __decorate([
-        __param(0, context_1.Qualifier('loggerFactory')), 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', [logger_1.LoggerFactory]), 
-        __metadata('design:returntype', void 0)
-    ], DragAndDropService.prototype, "setBeans", null);
-    __decorate([
-        context_1.PreDestroy, 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', []), 
-        __metadata('design:returntype', void 0)
-    ], DragAndDropService.prototype, "destroy", null);
-    DragAndDropService = __decorate([
-        context_1.Bean('dragAndDropService'), 
-        __metadata('design:paramtypes', [])
-    ], DragAndDropService);
     return DragAndDropService;
-})();
+}());
+DragAndDropService.ICON_PINNED = 'pinned';
+DragAndDropService.ICON_ADD = 'add';
+DragAndDropService.ICON_MOVE = 'move';
+DragAndDropService.ICON_LEFT = 'left';
+DragAndDropService.ICON_RIGHT = 'right';
+DragAndDropService.ICON_GROUP = 'group';
+DragAndDropService.ICON_AGGREGATE = 'aggregate';
+DragAndDropService.ICON_PIVOT = 'pivot';
+DragAndDropService.ICON_NOT_ALLOWED = 'notAllowed';
+DragAndDropService.GHOST_TEMPLATE = '<div class="ag-dnd-ghost">' +
+    '  <span class="ag-dnd-ghost-icon ag-shake-left-to-right"></span>' +
+    '  <div class="ag-dnd-ghost-label">' +
+    '  </div>' +
+    '</div>';
+__decorate([
+    context_1.Autowired('gridOptionsWrapper'),
+    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+], DragAndDropService.prototype, "gridOptionsWrapper", void 0);
+__decorate([
+    context_1.Autowired('dragService'),
+    __metadata("design:type", dragService_1.DragService)
+], DragAndDropService.prototype, "dragService", void 0);
+__decorate([
+    context_1.Autowired('columnController'),
+    __metadata("design:type", columnController_1.ColumnController)
+], DragAndDropService.prototype, "columnController", void 0);
+__decorate([
+    context_1.PostConstruct,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], DragAndDropService.prototype, "init", null);
+__decorate([
+    __param(0, context_1.Qualifier('loggerFactory')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [logger_1.LoggerFactory]),
+    __metadata("design:returntype", void 0)
+], DragAndDropService.prototype, "setBeans", null);
+__decorate([
+    context_1.PreDestroy,
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], DragAndDropService.prototype, "destroy", null);
+DragAndDropService = DragAndDropService_1 = __decorate([
+    context_1.Bean('dragAndDropService')
+], DragAndDropService);
 exports.DragAndDropService = DragAndDropService;
+var DragAndDropService_1;

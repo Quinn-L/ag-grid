@@ -1,21 +1,28 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
 var component_1 = require("../../widgets/component");
 var constants_1 = require("../../constants");
 var utils_1 = require("../../utils");
 var LargeTextCellEditor = (function (_super) {
     __extends(LargeTextCellEditor, _super);
     function LargeTextCellEditor() {
-        _super.call(this, LargeTextCellEditor.TEMPLATE);
+        return _super.call(this, LargeTextCellEditor.TEMPLATE) || this;
     }
     LargeTextCellEditor.prototype.init = function (params) {
         this.params = params;
@@ -51,11 +58,11 @@ var LargeTextCellEditor = (function (_super) {
     LargeTextCellEditor.prototype.isPopup = function () {
         return true;
     };
-    LargeTextCellEditor.TEMPLATE = 
-    // tab index is needed so we can focus, which is needed for keyboard events
-    '<div class="ag-large-text" tabindex="0">' +
-        '<div class="ag-large-textarea"></div>' +
-        '</div>';
     return LargeTextCellEditor;
-})(component_1.Component);
+}(component_1.Component));
+LargeTextCellEditor.TEMPLATE = 
+// tab index is needed so we can focus, which is needed for keyboard events
+'<div class="ag-large-text" tabindex="0">' +
+    '<div class="ag-large-textarea"></div>' +
+    '</div>';
 exports.LargeTextCellEditor = LargeTextCellEditor;

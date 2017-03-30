@@ -1,9 +1,11 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 // class returns a unique id to use for the column. it checks the existing columns, and if the requested
 // id is already taken, it will start appending numbers until it gets a unique id.
 // eg, if the col field is 'name', it will try ids: {name, name_1, name_2...}
@@ -42,5 +44,5 @@ var ColumnKeyCreator = (function () {
         }
     };
     return ColumnKeyCreator;
-})();
+}());
 exports.ColumnKeyCreator = ColumnKeyCreator;

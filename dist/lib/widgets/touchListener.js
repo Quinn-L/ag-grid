@@ -1,9 +1,11 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var eventService_1 = require("../eventService");
 var utils_1 = require("../utils");
 var TouchListener = (function () {
@@ -83,9 +85,9 @@ var TouchListener = (function () {
     TouchListener.prototype.destroy = function () {
         this.destroyFuncs.forEach(function (func) { return func(); });
     };
-    // private mostRecentTouch: Touch;
-    TouchListener.EVENT_TAP = 'tap';
-    TouchListener.EVENT_LONG_TAP = 'longTap';
     return TouchListener;
-})();
+}());
+// private mostRecentTouch: Touch;
+TouchListener.EVENT_TAP = 'tap';
+TouchListener.EVENT_LONG_TAP = 'longTap';
 exports.TouchListener = TouchListener;

@@ -1,27 +1,35 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
 var component_1 = require("../../widgets/component");
 var PopupEditorWrapper = (function (_super) {
     __extends(PopupEditorWrapper, _super);
     function PopupEditorWrapper(cellEditor) {
-        _super.call(this, '<div class="ag-popup-editor"/>');
-        this.getGuiCalledOnChild = false;
-        this.cellEditor = cellEditor;
-        this.addDestroyFunc(function () { return cellEditor.destroy(); });
-        this.addDestroyableEventListener(
+        var _this = _super.call(this, '<div class="ag-popup-editor"/>') || this;
+        _this.getGuiCalledOnChild = false;
+        _this.cellEditor = cellEditor;
+        _this.addDestroyFunc(function () { return cellEditor.destroy(); });
+        _this.addDestroyableEventListener(
         // this needs to be 'super' and not 'this' as if we call 'this',
         // it ends up called 'getGui()' on the child before 'init' was called,
         // which is not good
-        _super.prototype.getGui.call(this), 'keydown', this.onKeyDown.bind(this));
+        _super.prototype.getGui.call(_this), 'keydown', _this.onKeyDown.bind(_this));
+        return _this;
     }
     PopupEditorWrapper.prototype.onKeyDown = function (event) {
         this.params.onKeyDown(event);
@@ -70,5 +78,5 @@ var PopupEditorWrapper = (function (_super) {
         }
     };
     return PopupEditorWrapper;
-})(component_1.Component);
+}(component_1.Component));
 exports.PopupEditorWrapper = PopupEditorWrapper;

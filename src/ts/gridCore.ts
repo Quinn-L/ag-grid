@@ -1,7 +1,6 @@
 
 import {GridOptions} from "./entities/gridOptions";
 import {GridOptionsWrapper} from "./gridOptionsWrapper";
-import {PaginationController} from "./rowControllers/paginationController";
 import {ColumnController} from "./columnController/columnController";
 import {RowRenderer} from "./rendering/rowRenderer";
 import {FilterManager} from "./filter/filterManager";
@@ -13,19 +12,19 @@ import {PopupService} from "./widgets/popupService";
 import {Events} from "./events";
 import {Utils as _} from "./utils";
 import {BorderLayout} from "./layout/borderLayout";
-import {PreDestroy, Bean, Qualifier, Autowired, PostConstruct, Optional} from "./context/context";
+import {PreDestroy, Bean, Qualifier, Autowired, PostConstruct, Optional, Context} from "./context/context";
 import {IRowModel} from "./interfaces/iRowModel";
 import {FocusedCellController} from "./focusedCellController";
 import {Component} from "./widgets/component";
 import {ICompFactory} from "./interfaces/iCompFactory";
 import {IFrameworkFactory} from "./interfaces/iFrameworkFactory";
+import {PaginationComp} from "./rowModels/pagination/paginationComp";
 
 @Bean('gridCore')
 export class GridCore {
 
     @Autowired('gridOptions') private gridOptions: GridOptions;
     @Autowired('gridOptionsWrapper') private gridOptionsWrapper: GridOptionsWrapper;
-    @Autowired('paginationController') private paginationController: PaginationController;
     @Autowired('rowModel') private rowModel: IRowModel;
     @Autowired('frameworkFactory') private frameworkFactory: IFrameworkFactory;
 
@@ -40,6 +39,7 @@ export class GridCore {
     @Autowired('quickFilterOnScope') private quickFilterOnScope: string;
     @Autowired('popupService') private popupService: PopupService;
     @Autowired('focusedCellController') private focusedCellController: FocusedCellController;
+    @Autowired('context') private context: Context;
 
     @Optional('rowGroupCompFactory') private rowGroupCompFactory: ICompFactory;
     @Optional('pivotCompFactory') private pivotCompFactory: ICompFactory;
@@ -66,20 +66,25 @@ export class GridCore {
     @PostConstruct
     public init(): void {
 
-        // and the last bean, done in it's own section, as it's optional
-        var toolPanelGui: HTMLElement;
-
         var eSouthPanel = this.createSouthPanel();
 
+        let eastPanel: HTMLElement;
+        let westPanel: HTMLElement;
         if (this.toolPanel && !this.gridOptionsWrapper.isForPrint()) {
-            toolPanelGui = this.toolPanel.getGui();
+            // if we are doing RTL, then the tool panel appears on the left
+            if (this.gridOptionsWrapper.isEnableRtl()) {
+                westPanel = this.toolPanel.getGui();
+            } else {
+                eastPanel = this.toolPanel.getGui();
+            }
         }
 
         var createTopPanelGui = this.createNorthPanel();
 
         this.eRootPanel = new BorderLayout({
             center: this.gridPanel.getLayout(),
-            east: toolPanelGui,
+            east: eastPanel,
+            west: westPanel,
             north: createTopPanelGui,
             south: eSouthPanel,
             dontFill: this.gridOptionsWrapper.isForPrint(),
@@ -100,6 +105,10 @@ export class GridCore {
             this.addWindowResizeListener();
         }
 
+        // important to set rtl before doLayout, as setting the RTL class impacts the scroll position,
+        // which doLayout indirectly depends on
+        this.addRtlSupport();
+
         this.doLayout();
 
         this.finished = false;
@@ -111,6 +120,14 @@ export class GridCore {
         this.onRowGroupChanged();
 
         this.logger.log('ready');
+    }
+
+    private addRtlSupport(): void {
+        if (this.gridOptionsWrapper.isEnableRtl()) {
+            _.addCssClass(this.eRootPanel.getGui(), 'ag-rtl');
+        } else {
+            _.addCssClass(this.eRootPanel.getGui(), 'ag-ltr');
+        }
     }
 
     private createNorthPanel(): HTMLElement {
@@ -157,7 +174,11 @@ export class GridCore {
         }
 
         var statusBarEnabled = this.statusBar && this.gridOptionsWrapper.isEnableStatusBar();
-        var paginationPanelEnabled = this.gridOptionsWrapper.isRowModelPagination() && !this.gridOptionsWrapper.isForPrint();
+        let isPaging = this.gridOptionsWrapper.isPagination() ||
+            this.gridOptionsWrapper.isRowModelServerPagination();
+        var paginationPanelEnabled = isPaging
+            && !this.gridOptionsWrapper.isForPrint()
+            && !this.gridOptionsWrapper.isSuppressPaginationPanel();
 
         if (!statusBarEnabled && !paginationPanelEnabled) {
             return null;
@@ -168,8 +189,12 @@ export class GridCore {
             eSouthPanel.appendChild(this.statusBar.getGui());
         }
 
+
         if (paginationPanelEnabled) {
-            eSouthPanel.appendChild(this.paginationController.getGui());
+            let paginationComp = new PaginationComp();
+            this.context.wireBean(paginationComp);
+            eSouthPanel.appendChild(paginationComp.getGui());
+            this.destroyFunctions.push(paginationComp.destroy.bind(paginationComp));
         }
 
         return eSouthPanel;
@@ -251,7 +276,7 @@ export class GridCore {
             throw 'Cannot use ensureNodeVisible when doing virtual paging, as we cannot check rows that are not in memory';
         }
         // look for the node index we want to display
-        var rowCount = this.rowModel.getRowCount();
+        var rowCount = this.rowModel.getPageLastRow() + 1;
         var comparatorIsAFunction = typeof comparator === 'function';
         var indexToSelect = -1;
         // go through all the nodes, find the one we want to show
@@ -279,6 +304,14 @@ export class GridCore {
         // need to do layout first, as drawVirtualRows and setPinnedColHeight
         // need to know the result of the resizing of the panels.
         var sizeChanged = this.eRootPanel.doLayout();
+        // not sure why, this is a hack, but if size changed, it may need to be called
+        // again - as the size change can change whether scrolls are visible or not (i think).
+        // to see why, take this second 'doLayout' call out, and see example in docs for
+        // width & height, the grid will flicker as it doesn't get laid out correctly with
+        // one call to doLayout()
+        if (sizeChanged) {
+            this.eRootPanel.doLayout();
+        }
         // both of the two below should be done in gridPanel, the gridPanel should register 'resize' to the panel
         if (sizeChanged) {
             this.rowRenderer.drawVirtualRowsWithLock();

@@ -1,9 +1,11 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var ColumnChangeEvent = (function () {
     function ColumnChangeEvent(type) {
         this.type = type;
@@ -84,5 +86,5 @@ var ColumnChangeEvent = (function () {
         return this.finished;
     };
     return ColumnChangeEvent;
-})();
+}());
 exports.ColumnChangeEvent = ColumnChangeEvent;

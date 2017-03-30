@@ -1,157 +1,104 @@
-import {Utils as _} from '../utils';
-import {IFilter, IFilterParams, IDoesFilterPassParams} from "../interfaces/iFilter";
-import {Autowired} from "../context/context";
-import {GridOptionsWrapper} from "../gridOptionsWrapper";
+import {Utils as _} from "../utils";
+import {IFilterParams, SerializedFilter} from "../interfaces/iFilter";
+import {QuerySelector} from "../widgets/componentAnnotations";
+import {BaseFilter, Comparator, ScalarBaseFilter} from "./baseFilter";
 
-export class NumberFilter implements IFilter {
+export interface SerializedNumberFilter extends SerializedFilter {
+    filter:number
+    filterTo:number
+    type:string
+}
 
+export class NumberFilter extends ScalarBaseFilter<number, IFilterParams, SerializedNumberFilter> {
     public static EQUALS = 'equals';// 1;
+
     public static NOT_EQUAL = 'notEqual';//2;
-    public static LESS_THAN = 'lessThan';//3;
     public static LESS_THAN_OR_EQUAL = 'lessThanOrEqual';//4;
     public static GREATER_THAN = 'greaterThan';//5;
-    public static GREATER_THAN_OR_EQUAL = 'greaterThanOrEqual';//6;
+    public static GREATER_THAN_OR_EQUAL = 'greaterThan';//6;
+    public static IN_RANGE = 'inRange';
+    @QuerySelector('#filterNumberToPanel')
+    private eNumberToPanel: HTMLElement;
 
-    private filterParams: IFilterParams;
+    filterNumber: any;
+    filterNumberTo: any;
 
-    @Autowired('gridOptionsWrapper') private gridOptionsWrapper: GridOptionsWrapper;
+    @QuerySelector('#filterToText')
+    private eFilterToTextField: HTMLInputElement;
 
-    private filterNumber: any;
-    private filterType: string;
-
-    private applyActive: boolean;
-    private newRowsActionKeep: boolean;
-
-    private eGui: HTMLElement;
     private eFilterTextField: HTMLInputElement;
-    private eTypeSelect: HTMLSelectElement;
-    private eApplyButton: HTMLButtonElement;
+    public static LESS_THAN = 'lessThan';//3;
 
-    public init(params: IFilterParams): void {
-        this.filterParams = params;
-        this.applyActive = (<any>params).apply === true;
-        this.newRowsActionKeep = (<any>params).newRowsAction === 'keep';
-
-        this.filterNumber = null;
-        this.filterType = NumberFilter.EQUALS;
-        this.createGui();
+    modelFromFloatingFilter(from: string): SerializedNumberFilter {
+        return {
+            type: this.filter,
+            filter: Number(from),
+            filterTo: this.filterNumberTo,
+            filterType: 'number'
+        };
     }
 
-    public onNewRowsLoaded() {
-        if (!this.newRowsActionKeep) {
-            this.setType(NumberFilter.EQUALS);
-            this.setFilter(null);
-        }
+    public getApplicableFilterTypes ():string[]{
+        return [BaseFilter.EQUALS, BaseFilter.NOT_EQUAL, BaseFilter.LESS_THAN, BaseFilter.LESS_THAN_OR_EQUAL,
+            BaseFilter.GREATER_THAN, BaseFilter.GREATER_THAN_OR_EQUAL, BaseFilter.IN_RANGE];
+    }
+
+    public bodyTemplate(): string {
+        let translate = this.translate.bind(this);
+        return `<div class="ag-filter-body">
+            <div>
+                <input class="ag-filter-filter" id="filterText" type="text" placeholder="${translate('filterOoo')}"/>
+            </div>
+             <div class="ag-filter-number-to" id="filterNumberToPanel">
+                <input class="ag-filter-filter" id="filterToText" type="text" placeholder="${translate('filterOoo')}"/>
+            </div>
+        </div>`;
+    }
+
+    public initialiseFilterBodyUi() {
+        this.filterNumber = null;
+        this.setFilterType(NumberFilter.EQUALS);
+        this.eFilterTextField = <HTMLInputElement> this.getGui().querySelector("#filterText");
+
+        this.addDestroyableEventListener(this.eFilterTextField, "input", this.onTextFieldsChanged.bind(this));
+        this.addDestroyableEventListener(this.eFilterToTextField, "input", this.onTextFieldsChanged.bind(this));
     }
 
     public afterGuiAttached() {
         this.eFilterTextField.focus();
     }
 
-    public doesFilterPass(params: IDoesFilterPassParams) {
-        if (this.filterNumber === null) {
-            return true;
-        }
-        var value = this.filterParams.valueGetter(params.node);
+    public comparator(): Comparator<number> {
+        return (left:number, right:number):number=>{
+            if (left === right) return 0;
+            if (left < right) return 1;
+            if (left > right) return -1;
+        };
+    }
 
-        if (!value && value !== 0) {
-            return false;
-        }
-
-        var valueAsNumber: any;
-        if (typeof value === 'number') {
-            valueAsNumber = value;
-        } else {
-            valueAsNumber = parseFloat(value);
-        }
-
-        switch (this.filterType) {
-            case NumberFilter.EQUALS:
-                return valueAsNumber === this.filterNumber;
-            case NumberFilter.LESS_THAN:
-                return valueAsNumber < this.filterNumber;
-            case NumberFilter.GREATER_THAN:
-                return valueAsNumber > this.filterNumber;
-            case NumberFilter.LESS_THAN_OR_EQUAL:
-                return valueAsNumber <= this.filterNumber;
-            case NumberFilter.GREATER_THAN_OR_EQUAL:
-                return valueAsNumber >= this.filterNumber;
-            case NumberFilter.NOT_EQUAL:
-                return valueAsNumber != this.filterNumber;  
-            default:
-                // should never happen
-                console.warn('invalid filter type ' + this.filterType);
-                return false;
+    private onTextFieldsChanged() {
+        let newFilter = this.stringToFloat(this.eFilterTextField.value);
+        let newFilterTo = this.stringToFloat(this.eFilterToTextField.value);
+        if (this.filterNumber !== newFilter || this.filterNumberTo !== newFilterTo) {
+            this.filterNumber = newFilter;
+            this.filterNumberTo = newFilterTo;
+            this.onFilterChanged();
         }
     }
 
-    public getGui() {
-        return this.eGui;
+    public filterValues ():number|number[] {
+        return this.filter !== BaseFilter.IN_RANGE ?
+            this.asNumber(this.filterNumber):
+            [this.asNumber(this.filterNumber), this.asNumber(this.filterNumberTo)];
     }
 
-    public isFilterActive() {
-        return this.filterNumber !== null;
+    private asNumber(value: any): number {
+        return _.isNumeric(value) ? value : null;
     }
 
-    private createTemplate() {
-        var translate = this.gridOptionsWrapper.getLocaleTextFunc();
 
-        return `<div>
-                    <div>
-                        <select class="ag-filter-select" id="filterType">
-                            <option value="${NumberFilter.EQUALS}">${translate('equals', 'Equals')}</option>
-                            <option value="${NumberFilter.NOT_EQUAL}">${translate('notEqual', 'Not equal')}</option>
-                            <option value="${NumberFilter.LESS_THAN}">${translate('lessThan', 'Less than')}</option>
-                            <option value="${NumberFilter.LESS_THAN_OR_EQUAL}">${translate('lessThanOrEqual', 'Less than or equal')}</option>
-                            <option value="${NumberFilter.GREATER_THAN}">${translate('greaterThan', 'Greater than')}</option>
-                            <option value="${NumberFilter.GREATER_THAN_OR_EQUAL}">${translate('greaterThanOrEqual', 'Greater than or equal')}</option>
-                        </select>
-                    </div>
-                    <div>
-                        <input class="ag-filter-filter" id="filterText" type="text" placeholder="${translate('filterOoo', 'Filter...')}"/>
-                    </div>
-                    <div class="ag-filter-apply-panel" id="applyPanel">
-                        <button type="button" id="applyButton">${translate('applyFilter', 'Apply Filter')}</button>
-                    </div>
-                </div>`;
-    }
-
-    private createGui() {
-        this.eGui = _.loadTemplate(this.createTemplate());
-        this.eFilterTextField = <HTMLInputElement> this.eGui.querySelector("#filterText");
-        this.eTypeSelect = <HTMLSelectElement> this.eGui.querySelector("#filterType");
-
-        _.addChangeListener(this.eFilterTextField, this.onFilterChanged.bind(this));
-        this.eTypeSelect.addEventListener("change", this.onTypeChanged.bind(this));
-
-        this.setupApply();
-    }
-
-    private setupApply() {
-        if (this.applyActive) {
-            this.eApplyButton = <HTMLButtonElement> this.eGui.querySelector('#applyButton');
-            this.eApplyButton.addEventListener('click', () => {
-                this.filterParams.filterChangedCallback();
-            });
-        } else {
-            _.removeElement(this.eGui, '#applyPanel');
-        }
-    }
-
-    private onTypeChanged() {
-        this.filterType = this.eTypeSelect.value;
-        this.filterChanged();
-    }
-
-    private filterChanged() {
-        this.filterParams.filterModifiedCallback();
-        if (!this.applyActive) {
-            this.filterParams.filterChangedCallback();
-        }
-    }
-
-    private onFilterChanged() {
-        var filterText = _.makeNull(this.eFilterTextField.value);
+    private stringToFloat(value:string) :number{
+        var filterText = _.makeNull(value);
         if (filterText && filterText.trim() === '') {
             filterText = null;
         }
@@ -161,16 +108,9 @@ export class NumberFilter implements IFilter {
         } else {
             newFilter = null;
         }
-        if (this.filterNumber !== newFilter) {
-            this.filterNumber = newFilter;
-            this.filterChanged();
-        }
+        return newFilter;
     }
 
-    public setType(type: string): void {
-        this.filterType = type;
-        this.eTypeSelect.value = type;
-    }
 
     public setFilter(filter: any) {
         filter = _.makeNull(filter);
@@ -182,27 +122,47 @@ export class NumberFilter implements IFilter {
         this.eFilterTextField.value = filter;
     }
 
+    public setFilterTo(filter: any) {
+        filter = _.makeNull(filter);
+
+        if (filter !== null && !(typeof filter === 'number')) {
+            filter = parseFloat(filter);
+        }
+        this.filterNumberTo = filter;
+        this.eFilterToTextField.value = filter;
+    }
+
     public getFilter() {
         return this.filterNumber;
     }
 
-    public getModel(): any {
-        if (this.isFilterActive()) {
-            return {
-                type: this.filterType,
-                filter: this.filterNumber
-            };
-        } else {
-            return null;
-        }
+    public serialize(): SerializedNumberFilter {
+        return {
+            type: this.filter,
+            filter: this.filterNumber,
+            filterTo: this.filterNumberTo,
+            filterType: 'number'
+        };
     }
 
-    public setModel(model: any): void {
-        if (model) {
-            this.setType(model.type);
-            this.setFilter(model.filter);
-        } else {
-            this.setFilter(null);
-        }
+    public parse(model: SerializedNumberFilter): void {
+        this.setFilterType(model.type);
+        this.setFilter(model.filter);
+        this.setFilterTo(model.filterTo);
+    }
+
+    public refreshFilterBodyUi(): void {
+        let visible = this.filter === NumberFilter.IN_RANGE;
+        _.setVisible(this.eNumberToPanel, visible);
+    }
+
+    public resetState():void{
+        this.setFilterType(BaseFilter.EQUALS);
+        this.setFilter(null);
+        this.setFilterTo(null);
+    }
+
+    public setType (filterType:string):void{
+        this.setFilterType(filterType);
     }
 }

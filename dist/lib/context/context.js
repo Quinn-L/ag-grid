@@ -1,13 +1,14 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var utils_1 = require("../utils");
-var logger_1 = require("../logger");
 var Context = (function () {
-    function Context(params) {
+    function Context(params, logger) {
         this.beans = {};
         this.componentsMappedByName = {};
         this.destroyed = false;
@@ -15,7 +16,7 @@ var Context = (function () {
             return;
         }
         this.contextParams = params;
-        this.logger = new logger_1.Logger('Context', this.contextParams.debug);
+        this.logger = logger;
         this.logger.log('>> creating ag-Application Context');
         this.setupComponents();
         this.createBeans();
@@ -44,8 +45,9 @@ var Context = (function () {
         var key = element.nodeName;
         if (this.componentsMappedByName && this.componentsMappedByName[key]) {
             var newComponent = new this.componentsMappedByName[key];
-            this.copyAttributesFromNode(element, newComponent.getGui());
             this.wireBean(newComponent);
+            this.copyAttributesFromNode(element, newComponent.getGui());
+            newComponent.attributesSet();
             return newComponent;
         }
         else {
@@ -62,11 +64,14 @@ var Context = (function () {
         }
     };
     Context.prototype.wireBean = function (bean) {
+        if (!bean)
+            throw Error("Can't wire to bean since it is null");
         this.wireBeans([bean]);
     };
     Context.prototype.wireBeans = function (beans) {
         this.autoWireBeans(beans);
         this.methodWireBeans(beans);
+        this.preConstruct(beans);
         this.postConstruct(beans);
     };
     Context.prototype.createBeans = function () {
@@ -117,7 +122,11 @@ var Context = (function () {
     };
     Context.prototype.methodWireBeans = function (beans) {
         var _this = this;
-        beans.forEach(function (bean) { return _this.methodWireBean(bean); });
+        beans.forEach(function (bean) {
+            if (!bean)
+                throw Error("Can't wire to bean since it is null");
+            return _this.methodWireBean(bean);
+        });
     };
     Context.prototype.autoWireBean = function (bean) {
         var _this = this;
@@ -195,6 +204,14 @@ var Context = (function () {
             }
         });
     };
+    Context.prototype.preConstruct = function (beans) {
+        beans.forEach(function (bean) {
+            // try calling init methods
+            if (bean.__agBeanMetaData && bean.__agBeanMetaData.preConstructMethods) {
+                bean.__agBeanMetaData.preConstructMethods.forEach(function (methodName) { return bean[methodName](); });
+            }
+        });
+    };
     Context.prototype.getBean = function (name) {
         return this.lookupBeanInstance('getBean', name, true);
     };
@@ -215,7 +232,7 @@ var Context = (function () {
         this.logger.log('>> ag-Application Context shut down - component is dead');
     };
     return Context;
-})();
+}());
 exports.Context = Context;
 // taken from: http://stackoverflow.com/questions/3362471/how-can-i-call-a-javascript-constructor-using-call-or-apply
 // allows calling 'apply' on a constructor
@@ -224,6 +241,14 @@ function applyToConstructor(constructor, argArray) {
     var factoryFunction = constructor.bind.apply(constructor, args);
     return new factoryFunction();
 }
+function PreConstruct(target, methodName, descriptor) {
+    var props = getOrCreateProps(target);
+    if (!props.postConstructMethods) {
+        props.preConstructMethods = [];
+    }
+    props.preConstructMethods.push(methodName);
+}
+exports.PreConstruct = PreConstruct;
 function PostConstruct(target, methodName, descriptor) {
     var props = getOrCreateProps(target);
     if (!props.postConstructMethods) {

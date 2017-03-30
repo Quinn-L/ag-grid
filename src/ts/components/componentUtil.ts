@@ -18,20 +18,21 @@ export class ComponentUtil {
         'editType'];
 
     public static OBJECT_PROPERTIES = [
-        'rowStyle','context','groupColumnDef','localeText','icons','datasource','viewportDatasource',
-        'groupRowRendererParams', 'aggFuncs', 'fullWidthCellRendererParams','defaultColGroupDef','defaultColDef'
+        'rowStyle','context','groupColumnDef','localeText','icons','datasource','enterpriseDatasource','viewportDatasource',
+        'groupRowRendererParams', 'aggFuncs', 'fullWidthCellRendererParams','defaultColGroupDef','defaultColDef','defaultExportParams'
     //,'cellRenderers','cellEditors'
     ];
 
     public static ARRAY_PROPERTIES = [
-        'slaveGrids','rowData','floatingTopRowData','floatingBottomRowData','columnDefs'
+        'slaveGrids','rowData','floatingTopRowData','floatingBottomRowData','columnDefs','excelStyles'
     ];
 
     public static NUMBER_PROPERTIES = [
         'rowHeight','rowBuffer','colWidth','headerHeight','groupDefaultExpanded',
         'minColWidth','maxColWidth','viewportRowModelPageSize','viewportRowModelBufferSize',
         'layoutInterval','autoSizePadding','maxPagesInCache','maxConcurrentDatasourceRequests',
-        'paginationOverflowSize','paginationPageSize','paginationInitialRowCount','scrollbarWidth'
+        'paginationOverflowSize','paginationPageSize','infiniteBlockSize','infiniteInitialRowCount',
+        'scrollbarWidth','paginationStartPage','infiniteBlockSize'
     ];
 
     public static BOOLEAN_PROPERTIES = [
@@ -45,22 +46,26 @@ export class ComponentUtil {
         'singleClickEdit','suppressLoadingOverlay','suppressNoRowsOverlay','suppressAutoSize',
         'suppressParentsInRowNodes','showToolPanel','suppressColumnMoveAnimation','suppressMovableColumns',
         'suppressFieldDotNotation','enableRangeSelection','suppressEnterprise','rowGroupPanelShow',
-        'pivotPanelShow', 'suppressTouch',
+        'pivotPanelShow', 'suppressTouch', 'allowContextMenuWithControlKey',
         'suppressContextMenu','suppressMenuFilterPanel','suppressMenuMainPanel','suppressMenuColumnPanel',
         'enableStatusBar','rememberGroupStateWhenNewData', 'enableCellChangeFlash', 'suppressDragLeaveHidesColumns',
         'suppressMiddleClickScrolls','suppressPreventDefaultOnMouseWheel', 'suppressUseColIdForGroups',
         'suppressCopyRowsToClipboard','pivotMode', 'suppressAggFuncInHeader', 'suppressColumnVirtualisation',
         'suppressFocusAfterRefresh', 'functionsPassive', 'functionsReadOnly', 'suppressRowHoverClass',
-        'animateRows', 'groupSelectsFiltered', 'groupRemoveSingleChildren', 'enableRtlSupport'
+        'animateRows', 'groupSelectsFiltered', 'groupRemoveSingleChildren', 'enableRtl', 'suppressClickEdit',
+        'enableGroupEdit', 'embedFullWidthRows', 'suppressTabbing', 'suppressPaginationPanel', 'floatingFilter',
+        'groupHideOpenParents', 'groupMultiAutoColumn', 'pagination', 'stopEditingWhenGridLosesFocus',
+        'paginationAutoPageSize'
     ];
 
     public static FUNCTION_PROPERTIES = ['headerCellRenderer', 'localeTextFunc', 'groupRowInnerRenderer', 'groupRowInnerRendererFramework',
-        'groupRowRenderer', 'groupRowRendererFramework', 'isScrollLag', 'isExternalFilterPresent', 'getRowHeight',
-        'doesExternalFilterPass', 'getRowClass','getRowStyle', 'getHeaderCellTemplate', 'traverseNode',
+        'dateComponent', 'dateComponentFramework', 'groupRowRenderer', 'groupRowRendererFramework', 'isScrollLag', 'isExternalFilterPresent',
+        'getRowHeight', 'doesExternalFilterPass', 'getRowClass','getRowStyle', 'getHeaderCellTemplate', 'traverseNode',
         'getContextMenuItems', 'getMainMenuItems', 'processRowPostCreate', 'processCellForClipboard',
         'getNodeChildDetails', 'groupRowAggNodes', 'getRowNodeId', 'isFullWidthCell', 'fullWidthCellRenderer',
         'fullWidthCellRendererFramework', 'doesDataFlower', 'processSecondaryColDef','processSecondaryColGroupDef',
-        'getBusinessKeyForNode', 'checkboxSelection'];
+        'getBusinessKeyForNode', 'sendToClipboard', 'navigateToNextCell', 'tabToNextCell',
+        'processCellFromClipboard', 'getDocument'];
 
     public static ALL_PROPERTIES = ComponentUtil.ARRAY_PROPERTIES
         .concat(ComponentUtil.OBJECT_PROPERTIES)
@@ -191,10 +196,16 @@ export class ComponentUtil {
         if (changes.headerHeight) {
             api.setHeaderHeight(ComponentUtil.toNumber(changes.headerHeight.currentValue));
         }
-        
+
+        if (changes.paginationPageSize) {
+            api.paginationSetPageSize(ComponentUtil.toNumber(changes.paginationPageSize.currentValue));
+        }
+
         if (changes.pivotMode) {
             columnApi.setPivotMode(ComponentUtil.toBoolean(changes.pivotMode.currentValue));
         }
+
+        api.dispatchEvent(Events.EVENT_COMPONENT_STATE_CHANGED, changes);
     }
 
     public static toBoolean(value: any): boolean {

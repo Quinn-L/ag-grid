@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -16,6 +17,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var gridOptionsWrapper_1 = require("./gridOptionsWrapper");
 var context_1 = require("./context/context");
 var context_2 = require("./context/context");
@@ -28,18 +30,17 @@ var LoggerFactory = (function () {
     LoggerFactory.prototype.create = function (name) {
         return new Logger(name, this.logging);
     };
-    __decorate([
-        __param(0, context_2.Qualifier('gridOptionsWrapper')), 
-        __metadata('design:type', Function), 
-        __metadata('design:paramtypes', [gridOptionsWrapper_1.GridOptionsWrapper]), 
-        __metadata('design:returntype', void 0)
-    ], LoggerFactory.prototype, "setBeans", null);
-    LoggerFactory = __decorate([
-        context_1.Bean('loggerFactory'), 
-        __metadata('design:paramtypes', [])
-    ], LoggerFactory);
     return LoggerFactory;
-})();
+}());
+__decorate([
+    __param(0, context_2.Qualifier('gridOptionsWrapper')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [gridOptionsWrapper_1.GridOptionsWrapper]),
+    __metadata("design:returntype", void 0)
+], LoggerFactory.prototype, "setBeans", null);
+LoggerFactory = __decorate([
+    context_1.Bean('loggerFactory')
+], LoggerFactory);
 exports.LoggerFactory = LoggerFactory;
 var Logger = (function () {
     function Logger(name, logging) {
@@ -52,5 +53,5 @@ var Logger = (function () {
         }
     };
     return Logger;
-})();
+}());
 exports.Logger = Logger;

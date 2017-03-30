@@ -1,9 +1,10 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,6 +14,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 var utils_1 = require("../utils");
 var context_1 = require("../context/context");
 var cellRendererFactory_1 = require("./cellRendererFactory");
@@ -85,18 +87,17 @@ var CellRendererService = (function () {
             return cellRendererKey;
         }
     };
-    __decorate([
-        context_1.Autowired('cellRendererFactory'), 
-        __metadata('design:type', cellRendererFactory_1.CellRendererFactory)
-    ], CellRendererService.prototype, "cellRendererFactory", void 0);
-    __decorate([
-        context_1.Autowired('context'), 
-        __metadata('design:type', context_1.Context)
-    ], CellRendererService.prototype, "context", void 0);
-    CellRendererService = __decorate([
-        context_1.Bean('cellRendererService'), 
-        __metadata('design:paramtypes', [])
-    ], CellRendererService);
     return CellRendererService;
-})();
+}());
+__decorate([
+    context_1.Autowired('cellRendererFactory'),
+    __metadata("design:type", cellRendererFactory_1.CellRendererFactory)
+], CellRendererService.prototype, "cellRendererFactory", void 0);
+__decorate([
+    context_1.Autowired('context'),
+    __metadata("design:type", context_1.Context)
+], CellRendererService.prototype, "context", void 0);
+CellRendererService = __decorate([
+    context_1.Bean('cellRendererService')
+], CellRendererService);
 exports.CellRendererService = CellRendererService;

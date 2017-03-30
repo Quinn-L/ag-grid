@@ -1,8 +1,9 @@
-// Type definitions for ag-grid v7.0.2
+// Type definitions for ag-grid v9.0.0
 // Project: http://www.ag-grid.com/
 // Definitions by: Niall Crosby <https://github.com/ceolter/>
 export declare class PopupService {
     private gridCore;
+    private gridOptionsWrapper;
     private getPopupParent();
     positionPopupForMenu(params: {
         eventSource: any;
@@ -29,5 +30,7 @@ export declare class PopupService {
         keepWithinBounds?: boolean;
     }): void;
     private positionPopup(params);
+    private keepYWithinBounds(params, y);
+    private keepXWithinBounds(params, x);
     addAsModalPopup(eChild: any, closeOnEsc: boolean, closedCallback?: () => void): (event?: any) => void;
 }

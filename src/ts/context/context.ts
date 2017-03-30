@@ -1,5 +1,5 @@
 import {Utils as _} from "../utils";
-import {Logger} from "../logger";
+import {ILogger} from "../iLogger";
 import {Component} from "../widgets/component";
 
 // steps in booting up:
@@ -34,13 +34,13 @@ export class Context {
 
     private beans: {[key: string]: BeanEntry} = {};
     private contextParams: ContextParams;
-    private logger: Logger;
+    private logger: ILogger;
 
     private componentsMappedByName: {[key: string]: any} = {};
 
     private destroyed = false;
     
-    public constructor(params: ContextParams) {
+    public constructor(params: ContextParams, logger: ILogger) {
 
         if (!params || !params.beans) {
             return;
@@ -48,7 +48,7 @@ export class Context {
 
         this.contextParams = params;
 
-        this.logger = new Logger('Context', this.contextParams.debug);
+        this.logger = logger;
         this.logger.log('>> creating ag-Application Context');
 
         this.setupComponents();
@@ -84,8 +84,9 @@ export class Context {
         var key = element.nodeName;
         if (this.componentsMappedByName && this.componentsMappedByName[key]) {
             var newComponent = <Component> new this.componentsMappedByName[key];
-            this.copyAttributesFromNode(element, newComponent.getGui());
             this.wireBean(newComponent);
+            this.copyAttributesFromNode(element, newComponent.getGui());
+            newComponent.attributesSet();
             return newComponent;
         } else {
             return null;
@@ -103,12 +104,14 @@ export class Context {
     }
 
     public wireBean(bean: any): void {
+        if (!bean) throw Error(`Can't wire to bean since it is null`);
         this.wireBeans([bean]);
     }
 
     private wireBeans(beans: any[]): void {
         this.autoWireBeans(beans);
         this.methodWireBeans(beans);
+        this.preConstruct(beans);
         this.postConstruct(beans);
     }
 
@@ -166,7 +169,10 @@ export class Context {
     }
 
     private methodWireBeans(beans: any[]): void {
-        beans.forEach( bean => this.methodWireBean(bean) );
+        beans.forEach(bean => {
+            if (!bean) throw Error(`Can't wire to bean since it is null`);
+            return this.methodWireBean(bean);
+        });
     }
 
     private autoWireBean(bean: any): void {
@@ -248,6 +254,16 @@ export class Context {
         } );
     }
 
+    private preConstruct(beans: any): void {
+        beans.forEach( (bean: any) => {
+            // try calling init methods
+            if (bean.__agBeanMetaData && bean.__agBeanMetaData.preConstructMethods) {
+                bean.__agBeanMetaData.preConstructMethods.forEach( (methodName: string) => bean[methodName]() );
+            }
+
+        } );
+    }
+
     public getBean(name: string): any {
         return this.lookupBeanInstance('getBean', name, true);
     }
@@ -278,6 +294,14 @@ function applyToConstructor(constructor: Function, argArray: any[]) {
     var args = [null].concat(argArray);
     var factoryFunction = constructor.bind.apply(constructor, args);
     return new factoryFunction();
+}
+
+export function PreConstruct(target: Object, methodName: string, descriptor: TypedPropertyDescriptor<any>): void {
+    var props = getOrCreateProps(target);
+    if (!props.postConstructMethods) {
+        props.preConstructMethods = [];
+    }
+    props.preConstructMethods.push(methodName);
 }
 
 export function PostConstruct(target: Object, methodName: string, descriptor: TypedPropertyDescriptor<any>): void {

@@ -1,13 +1,19 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v7.0.2
+ * @version v9.0.0
  * @link http://www.ag-grid.com/
  * @license MIT
  */
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 function QuerySelector(selector) {
     return querySelectorFunc.bind(this, selector);
 }
 exports.QuerySelector = QuerySelector;
+function RefSelector(ref) {
+    return querySelectorFunc.bind(this, '[ref=' + ref + ']');
+}
+exports.RefSelector = RefSelector;
 function querySelectorFunc(selector, classPrototype, methodOrAttributeName, index) {
     if (selector === null) {
         console.error('ag-Grid: QuerySelector selector should not be null');
