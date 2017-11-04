@@ -9,11 +9,15 @@ import {GridCore} from "../../gridCore";
 import {IMenuFactory} from "../../interfaces/iMenuFactory";
 import {Autowired, Context, PostConstruct} from "../../context/context";
 import {CssClassApplier} from "../cssClassApplier";
-import {DragAndDropService, DropTarget, DragSource, DragSourceType} from "../../dragAndDrop/dragAndDropService";
+import {
+    DragAndDropService, DragItem, DragSource, DragSourceType,
+    DropTarget
+} from "../../dragAndDrop/dragAndDropService";
 import {SortController} from "../../sortController";
 import {SetLeftFeature} from "../../rendering/features/setLeftFeature";
-import {TouchListener} from "../../widgets/touchListener";
+import {LongTapEvent, TapEvent, TouchListener} from "../../widgets/touchListener";
 import {Component} from "../../widgets/component";
+import {Beans} from "../../rendering/beans";
 
 export class RenderedHeaderCell extends Component {
 
@@ -29,6 +33,7 @@ export class RenderedHeaderCell extends Component {
     @Autowired('dragAndDropService') private dragAndDropService: DragAndDropService;
     @Autowired('sortController') private sortController: SortController;
     @Autowired('$scope') private $scope: any;
+    @Autowired('beans') private beans: Beans;
 
     private eRoot: HTMLElement;
 
@@ -64,14 +69,14 @@ export class RenderedHeaderCell extends Component {
     public init(): void {
         let eGui = this.headerTemplateLoader.createHeaderElement(this.column);
         this.setGui(eGui);
-        _.addCssClass(eGui, 'ag-header-cell');
 
         this.createScope();
         this.addAttributes();
         CssClassApplier.addHeaderClassesFromColDef(this.column.getColDef(), eGui, this.gridOptionsWrapper, this.column, null);
+        _.addCssClass(eGui, 'ag-header-cell');
 
         // label div
-        var eHeaderCellLabel = <HTMLElement> eGui.querySelector('#agHeaderCellLabel');
+        let eHeaderCellLabel = <HTMLElement> eGui.querySelector('#agHeaderCellLabel');
 
         this.displayName = this.columnController.getDisplayNameForColumn(this.column, 'header', true);
 
@@ -86,11 +91,14 @@ export class RenderedHeaderCell extends Component {
         this.setupText();
         this.setupWidth();
 
-        this.addFeature(this.context, new SetLeftFeature(this.column, eGui));
+        let setLeftFeature = new SetLeftFeature(this.column, eGui, this.beans);
+        setLeftFeature.init();
+        this.addDestroyFunc(setLeftFeature.destroy.bind(setLeftFeature));
+
     }
 
     private setupTooltip(): void {
-        var colDef = this.column.getColDef();
+        let colDef = this.column.getColDef();
 
         // add tooltip if exists
         if (colDef.headerTooltip) {
@@ -99,16 +107,16 @@ export class RenderedHeaderCell extends Component {
     }
 
     private setupText(): void {
-        var colDef = this.column.getColDef();
+        let colDef = this.column.getColDef();
         // render the cell, use a renderer if one is provided
-        var headerCellRenderer: any;
+        let headerCellRenderer: any;
         if (colDef.headerCellRenderer) { // first look for a renderer in col def
             headerCellRenderer = colDef.headerCellRenderer;
         } else if (this.gridOptionsWrapper.getHeaderCellRenderer()) { // second look for one in grid options
             headerCellRenderer = this.gridOptionsWrapper.getHeaderCellRenderer();
         }
 
-        var eText = this.queryForHtmlElement('#agText');
+        let eText = this.queryForHtmlElement('#agText');
         if (eText) {
             if (headerCellRenderer) {
                 this.useRenderer(this.displayName, headerCellRenderer, eText);
@@ -134,7 +142,7 @@ export class RenderedHeaderCell extends Component {
     }
 
     private onFilterChanged(): void {
-        var filterPresent = this.column.isFilterActive();
+        let filterPresent = this.column.isFilterActive();
         _.addOrRemoveCssClass(this.getGui(), 'ag-header-cell-filtered', filterPresent);
         _.addOrRemoveCssClass(this.eFilterIcon, 'ag-hidden', !filterPresent);
     }
@@ -166,14 +174,14 @@ export class RenderedHeaderCell extends Component {
     }
 
     private setupMenu(): void {
-        var eMenu = this.queryForHtmlElement('#agMenu');
+        let eMenu = this.queryForHtmlElement('#agMenu');
 
         // if no menu provided in template, do nothing
         if (!eMenu) {
             return;
         }
 
-        var skipMenu = !this.menuFactory.isMenuEnabled(this.column) || this.column.getColDef().suppressMenu;
+        let skipMenu = !this.menuFactory.isMenuEnabled(this.column) || this.column.getColDef().suppressMenu;
 
         if (skipMenu) {
             _.removeFromParent(eMenu);
@@ -191,7 +199,7 @@ export class RenderedHeaderCell extends Component {
                 eMenu.style.opacity = '0';
             });
         }
-        var style = <any> eMenu.style;
+        let style = <any> eMenu.style;
         style['transition'] = 'opacity 0.2s, border 0.2s';
         style['-webkit-transition'] = 'opacity 0.2s, border 0.2s';
     }
@@ -217,17 +225,18 @@ export class RenderedHeaderCell extends Component {
     }
 
     private setupMove(eHeaderCellLabel: HTMLElement): void {
-        var suppressMove = this.gridOptionsWrapper.isSuppressMovableColumns()
+        let suppressMove = this.gridOptionsWrapper.isSuppressMovableColumns()
                             || this.column.getColDef().suppressMovable
                             || this.gridOptionsWrapper.isForPrint();
 
         if (suppressMove) { return; }
 
+
         if (eHeaderCellLabel) {
-            var dragSource: DragSource = {
+            let dragSource: DragSource = {
                 type: DragSourceType.HeaderCell,
                 eElement: eHeaderCellLabel,
-                dragItem: [this.column],
+                dragItemCallback: () => this.createDragItem(),
                 dragItemName: this.displayName,
                 dragSourceDropTarget: this.dragSourceDropTarget
             };
@@ -236,16 +245,25 @@ export class RenderedHeaderCell extends Component {
         }
     }
 
+    private createDragItem(): DragItem {
+        let visibleState: { [key: string]: boolean } = {};
+        visibleState[this.column.getId()] = this.column.isVisible();
+        return {
+            columns: [this.column],
+            visibleState: visibleState
+        };
+    }
+
     private setupTap(): void {
 
         if (this.gridOptionsWrapper.isSuppressTouch()) { return; }
 
         let touchListener = new TouchListener(this.getGui());
-        let tapListener = ()=> {
+        let tapListener = (event: TapEvent)=> {
             this.sortController.progressSort(this.column, false);
         };
-        let longTapListener = (touch: Touch)=> {
-            this.gridOptionsWrapper.getApi().showColumnMenuAfterMouseClick(this.column, touch);
+        let longTapListener = (event: LongTapEvent)=> {
+            this.gridOptionsWrapper.getApi().showColumnMenuAfterMouseClick(this.column, event.touchStart);
         };
 
         this.addDestroyableEventListener(touchListener, TouchListener.EVENT_TAP, tapListener);
@@ -255,15 +273,15 @@ export class RenderedHeaderCell extends Component {
     }
 
     private setupResize(): void {
-        var colDef = this.column.getColDef();
-        var eResize = this.queryForHtmlElement('#agResizeBar');
+        let colDef = this.column.getColDef();
+        let eResize = this.queryForHtmlElement('#agResizeBar');
 
         // if no eResize in template, do nothing
         if (!eResize) {
             return;
         }
 
-        var weWantResize = this.gridOptionsWrapper.isEnableColResize() && !colDef.suppressResize;
+        let weWantResize = this.gridOptionsWrapper.isEnableColResize() && !colDef.suppressResize;
         if (!weWantResize) {
             _.removeFromParent(eResize);
             return;
@@ -278,7 +296,7 @@ export class RenderedHeaderCell extends Component {
             onDragging: this.onDragging.bind(this)
         });
 
-        var weWantAutoSize = !this.gridOptionsWrapper.isSuppressAutoSize() && !colDef.suppressAutoSize;
+        let weWantAutoSize = !this.gridOptionsWrapper.isSuppressAutoSize() && !colDef.suppressAutoSize;
         if (weWantAutoSize) {
             this.addDestroyableEventListener(eResize, 'dblclick', () => {
                 this.columnController.autoSizeColumn(this.column);
@@ -288,7 +306,7 @@ export class RenderedHeaderCell extends Component {
 
     private useRenderer(headerNameValue: string, headerCellRenderer: Function, eText: HTMLElement): void {
         // renderer provided, use it
-        var cellRendererParams = {
+        let cellRendererParams = {
             colDef: this.column.getColDef(),
             $scope: this.childScope,
             context: this.gridOptionsWrapper.getContext(),
@@ -296,20 +314,20 @@ export class RenderedHeaderCell extends Component {
             api: this.gridOptionsWrapper.getApi(),
             eHeaderCell: this.getGui()
         };
-        var cellRendererResult = headerCellRenderer(cellRendererParams);
-        var childToAppend: any;
+        let cellRendererResult = headerCellRenderer(cellRendererParams);
+        let childToAppend: any;
         if (_.isNodeOrElement(cellRendererResult)) {
             // a dom node or element was returned, so add child
             childToAppend = cellRendererResult;
         } else {
             // otherwise assume it was html, so just insert
-            var eTextSpan = document.createElement("span");
+            let eTextSpan = document.createElement("span");
             eTextSpan.innerHTML = cellRendererResult;
             childToAppend = eTextSpan;
         }
         // angular compile header if option is turned on
         if (this.gridOptionsWrapper.isAngularCompileHeaders()) {
-            var childToAppendCompiled = this.$compile(childToAppend)(this.childScope)[0];
+            let childToAppendCompiled = this.$compile(childToAppend)(this.childScope)[0];
             eText.appendChild(childToAppendCompiled);
         } else {
             eText.appendChild(childToAppend);
@@ -317,17 +335,17 @@ export class RenderedHeaderCell extends Component {
     }
 
     public setupSort(eHeaderCellLabel: HTMLElement): void {
-        var enableSorting = this.gridOptionsWrapper.isEnableSorting() && !this.column.getColDef().suppressSorting;
-        let eGui = this.getGui();
+        let enableSorting = this.gridOptionsWrapper.isEnableSorting() && !this.column.getColDef().suppressSorting;
+        let element = this.getGui();
         if (!enableSorting) {
-            _.removeFromParent(eGui.querySelector('#agSortAsc'));
-            _.removeFromParent(eGui.querySelector('#agSortDesc'));
-            _.removeFromParent(eGui.querySelector('#agNoSort'));
+            _.removeFromParent(element.querySelector('#agSortAsc'));
+            _.removeFromParent(element.querySelector('#agSortDesc'));
+            _.removeFromParent(element.querySelector('#agNoSort'));
             return;
         }
 
         // add sortable class for styling
-        _.addCssClass(eGui, 'ag-header-cell-sortable');
+        _.addCssClass(element, 'ag-header-cell-sortable');
 
         // add the event on the header, so when clicked, we do sorting
         if (eHeaderCellLabel) {
@@ -360,7 +378,7 @@ export class RenderedHeaderCell extends Component {
         }
 
         if (this.eSortNone) {
-            var alwaysHideNoSort = !this.column.getColDef().unSortIcon && !this.gridOptionsWrapper.isUnSortIcon();
+            let alwaysHideNoSort = !this.column.getColDef().unSortIcon && !this.gridOptionsWrapper.isUnSortIcon();
             _.addOrRemoveCssClass(this.eSortNone, 'ag-hidden', alwaysHideNoSort || !this.column.isSortNone());
         }
     }

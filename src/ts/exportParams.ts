@@ -4,15 +4,15 @@ import {RowNode} from "./entities/rowNode";
 import {GridApi} from "./gridApi";
 import {ColumnApi} from "./columnController/columnController";
 
-export interface ExportParams {
+export interface BaseExportParams{
     skipHeader?: boolean;
     columnGroups?:boolean;
     skipFooters?: boolean;
     skipGroups?: boolean;
-    skipFloatingTop?: boolean;
-    skipFloatingBottom?: boolean;
+    skipPinnedTop?: boolean;
+    skipPinnedBottom?: boolean;
     suppressQuotes?: boolean;
-    columnKeys?: (Column|ColDef|string)[]
+    columnKeys?: (string|Column)[]
     fileName?: string;
     allColumns?: boolean;
     onlySelected?: boolean;
@@ -22,9 +22,12 @@ export interface ExportParams {
     processHeaderCallback?(params: ProcessHeaderForExportParams): string;
 }
 
-export interface CsvExportParams extends ExportParams{
-    customHeader?: string;
-    customFooter?: string;
+export interface ExportParams<T> extends BaseExportParams{
+    customHeader?: T;
+    customFooter?: T;
+}
+
+export interface CsvExportParams extends ExportParams<string>{
     columnSeparator?: string;
 }
 
@@ -40,7 +43,8 @@ export interface ProcessCellForExportParams {
     column: Column,
     api: GridApi,
     columnApi: ColumnApi,
-    context: any
+    context: any,
+    type: string // clipboard, dragCopy (ctrl+D), export
 }
 
 export interface ProcessHeaderForExportParams {

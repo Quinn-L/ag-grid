@@ -1,29 +1,42 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
+import { RowNode } from "../entities/rowNode";
+import { Column } from "../entities/column";
 export declare class PopupService {
     private gridCore;
     private gridOptionsWrapper;
+    private activePopupElements;
     private getPopupParent();
     positionPopupForMenu(params: {
         eventSource: any;
         ePopup: HTMLElement;
     }): void;
     positionPopupUnderMouseEvent(params: {
+        rowNode?: RowNode;
+        column?: Column;
+        type: string;
         mouseEvent: MouseEvent | Touch;
         ePopup: HTMLElement;
     }): void;
     positionPopupUnderComponent(params: {
+        type: string;
         eventSource: HTMLElement;
         ePopup: HTMLElement;
+        column?: Column;
+        rowNode?: RowNode;
         minWidth?: number;
         nudgeX?: number;
         nudgeY?: number;
         keepWithinBounds?: boolean;
     }): void;
+    private callPostProcessPopup(ePopup, eventSource, mouseEvent, type, column, rowNode);
     positionPopupOverComponent(params: {
+        type: string;
         eventSource: HTMLElement;
         ePopup: HTMLElement;
+        column: Column;
+        rowNode: RowNode;
         minWidth?: number;
         nudgeX?: number;
         nudgeY?: number;

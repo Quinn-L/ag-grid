@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -33,6 +33,9 @@ var reUnescapedHtml = /[&<>"']/g;
 var Utils = (function () {
     function Utils() {
     }
+    Utils.mimicAsync = function (callback) {
+        callback();
+    };
     // returns true if the event is close to the original event by X pixels either vertically or horizontally.
     // we only start dragging after X pixels so this allows us to know if we should start dragging yet.
     Utils.areEventsNear = function (e1, e2, pixelCount) {
@@ -189,31 +192,45 @@ var Utils = (function () {
         });
         return result;
     };
-    Utils.mergeDeep = function (object, source) {
+    Utils.getAllKeysInObjects = function (objects) {
+        var allValues = {};
+        objects.forEach(function (obj) {
+            if (obj) {
+                Object.keys(obj).forEach(function (key) { return allValues[key] = null; });
+            }
+        });
+        return Object.keys(allValues);
+    };
+    Utils.mergeDeep = function (dest, source) {
         if (this.exists(source)) {
-            this.iterateObject(source, function (key, value) {
-                var currentValue = object[key];
-                var target = source[key];
-                if (currentValue == null) {
-                    object[key] = value;
+            this.iterateObject(source, function (key, newValue) {
+                var oldValue = dest[key];
+                if (oldValue === newValue) {
+                    return;
                 }
-                if (typeof currentValue === 'object') {
-                    if (target) {
-                        Utils.mergeDeep(object[key], target);
-                    }
+                if (typeof oldValue === 'object' && typeof newValue === 'object') {
+                    Utils.mergeDeep(oldValue, newValue);
                 }
-                if (target) {
-                    object[key] = target;
+                else {
+                    dest[key] = newValue;
                 }
             });
         }
     };
-    Utils.assign = function (object, source) {
-        if (this.exists(source)) {
-            this.iterateObject(source, function (key, value) {
-                object[key] = value;
-            });
+    Utils.assign = function (object) {
+        var _this = this;
+        var sources = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            sources[_i - 1] = arguments[_i];
         }
+        sources.forEach(function (source) {
+            if (_this.exists(source)) {
+                _this.iterateObject(source, function (key, value) {
+                    object[key] = value;
+                });
+            }
+        });
+        return object;
     };
     Utils.parseYyyyMmDdToDate = function (yyyyMmDd, separator) {
         try {
@@ -246,6 +263,13 @@ var Utils = (function () {
             return;
         }
         source.forEach(function (func) { return target.push(func); });
+    };
+    Utils.createArrayOfNumbers = function (first, last) {
+        var result = [];
+        for (var i = first; i <= last; i++) {
+            result.push(i);
+        }
+        return result;
     };
     Utils.getFunctionParameters = function (func) {
         var fnStr = func.toString().replace(FUNCTION_STRIP_COMMENTS, '');
@@ -316,6 +340,19 @@ var Utils = (function () {
     Utils.isNodeOrElement = function (o) {
         return this.isNode(o) || this.isElement(o);
     };
+    Utils.isEventFromPrintableCharacter = function (event) {
+        var pressedChar = String.fromCharCode(event.charCode);
+        if (exports._.exists(event.key)) {
+            // modern browser will implement key, so we return if key is length 1, eg if it is 'a' for the
+            // a key, or '2' for the '2' key. non-printable characters have names, eg 'Enter' or 'Backspace'.
+            return event.key.length === 1;
+        }
+        else {
+            // otherwise, for older browsers, we test against a list of characters, which doesn't include
+            // accents for non-English, but don't care much, as most users are on modern browsers
+            return Utils.PRINTABLE_CHARACTERS.indexOf(pressedChar) >= 0;
+        }
+    };
     //adds all type of change listeners to an element, intended to be a text field
     Utils.addChangeListener = function (element, listener) {
         element.addEventListener("changed", listener);
@@ -351,6 +388,18 @@ var Utils = (function () {
         else {
             return true;
         }
+    };
+    Utils.firstExistingValue = function () {
+        var values = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            values[_i] = arguments[_i];
+        }
+        for (var i = 0; i < values.length; i++) {
+            var value = values[i];
+            if (exports._.exists(value))
+                return value;
+        }
+        return null;
     };
     Utils.anyExists = function (values) {
         if (values) {
@@ -391,6 +440,18 @@ var Utils = (function () {
         var tempDiv = document.createElement("div");
         tempDiv.innerHTML = template;
         return tempDiv.firstChild;
+    };
+    Utils.appendHtml = function (eContainer, htmlTemplate) {
+        if (eContainer.lastChild) {
+            // https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentHTML
+            // we put the items at the start, so new items appear underneath old items,
+            // so when expanding/collapsing groups, the new rows don't go on top of the
+            // rows below that are moving our of the way
+            eContainer.insertAdjacentHTML('afterbegin', htmlTemplate);
+        }
+        else {
+            eContainer.innerHTML = htmlTemplate;
+        }
     };
     Utils.addOrRemoveCssClass = function (element, className, addOrRemove) {
         if (addOrRemove) {
@@ -472,13 +533,23 @@ var Utils = (function () {
     Utils.offsetWidth = function (element) {
         return element && element.clientWidth ? element.clientWidth : 0;
     };
+    Utils.sortNumberArray = function (numberArray) {
+        numberArray.sort(function (a, b) { return a - b; });
+    };
     Utils.removeCssClass = function (element, className) {
-        if (element.className && element.className.length > 0) {
-            var cssClasses = element.className.split(' ');
-            var index = cssClasses.indexOf(className);
-            if (index >= 0) {
-                cssClasses.splice(index, 1);
-                element.className = cssClasses.join(' ');
+        if (element.classList) {
+            element.classList.remove(className);
+        }
+        else {
+            if (element.className && element.className.length > 0) {
+                var cssClasses = element.className.split(' ');
+                if (cssClasses.indexOf(className) >= 0) {
+                    // remove all instances of the item, not just the first, in case it's in more than once
+                    while (cssClasses.indexOf(className) >= 0) {
+                        cssClasses.splice(cssClasses.indexOf(className), 1);
+                    }
+                    element.className = cssClasses.join(' ');
+                }
             }
         }
     };
@@ -531,9 +602,19 @@ var Utils = (function () {
             _this.insertIntoArray(array, obj, toIndex);
         });
     };
-    Utils.defaultComparator = function (valueA, valueB) {
+    Utils.defaultComparator = function (valueA, valueB, accentedCompare) {
+        if (accentedCompare === void 0) { accentedCompare = false; }
         var valueAMissing = valueA === null || valueA === undefined;
         var valueBMissing = valueB === null || valueB === undefined;
+        // this is for aggregations sum and avg, where the result can be a number that is wrapped.
+        // if we didn't do this, then the toString() value would be used, which would result in
+        // the strings getting used instead of the numbers.
+        if (valueA && valueA.toNumber) {
+            valueA = valueA.toNumber();
+        }
+        if (valueB && valueB.toNumber) {
+            valueB = valueB.toNumber();
+        }
         if (valueAMissing && valueBMissing) {
             return 0;
         }
@@ -544,13 +625,19 @@ var Utils = (function () {
             return 1;
         }
         if (typeof valueA === "string") {
-            try {
-                // using local compare also allows chinese comparisons
-                return valueA.localeCompare(valueB);
+            if (!accentedCompare) {
+                return doQuickCompare(valueA, valueB);
             }
-            catch (e) {
-                // if something wrong with localeCompare, eg not supported
-                // by browser, then just continue without using it
+            else {
+                try {
+                    // using local compare also allows chinese comparisons
+                    return valueA.localeCompare(valueB);
+                }
+                catch (e) {
+                    // if something wrong with localeCompare, eg not supported
+                    // by browser, then just continue with the quick one
+                    return doQuickCompare(valueA, valueB);
+                }
             }
         }
         if (valueA < valueB) {
@@ -561,6 +648,9 @@ var Utils = (function () {
         }
         else {
             return 0;
+        }
+        function doQuickCompare(a, b) {
+            return (a > b ? 1 : (a < b ? -1 : 0));
         }
     };
     Utils.compareArrays = function (array1, array2) {
@@ -579,6 +669,71 @@ var Utils = (function () {
             }
         }
         return true;
+    };
+    Utils.ensureDomOrder = function (eContainer, eChild, eChildBefore) {
+        // if already in right order, do nothing
+        if (eChildBefore && eChildBefore.nextSibling === eChild) {
+            return;
+        }
+        if (eChildBefore) {
+            if (eChildBefore.nextSibling) {
+                // insert between the eRowBefore and the row after it
+                eContainer.insertBefore(eChild, eChildBefore.nextSibling);
+            }
+            else {
+                // if nextSibling is missing, means other row is at end, so just append new row at the end
+                eContainer.appendChild(eChild);
+            }
+        }
+        else {
+            // otherwise put at start
+            if (eContainer.firstChild) {
+                // insert it at the first location
+                eContainer.insertBefore(eChild, eContainer.firstChild);
+            }
+        }
+    };
+    Utils.insertWithDomOrder = function (eContainer, eChild, eChildBefore) {
+        if (eChildBefore) {
+            if (eChildBefore.nextSibling) {
+                // insert between the eRowBefore and the row after it
+                eContainer.insertBefore(eChild, eChildBefore.nextSibling);
+            }
+            else {
+                // if nextSibling is missing, means other row is at end, so just append new row at the end
+                eContainer.appendChild(eChild);
+            }
+        }
+        else {
+            if (eContainer.firstChild) {
+                // insert it at the first location
+                eContainer.insertBefore(eChild, eContainer.firstChild);
+            }
+            else {
+                // otherwise eContainer is empty, so just append it
+                eContainer.appendChild(eChild);
+            }
+        }
+    };
+    Utils.insertTemplateWithDomOrder = function (eContainer, htmlTemplate, eChildBefore) {
+        var res;
+        if (eChildBefore) {
+            // if previous element exists, just slot in after the previous element
+            eChildBefore.insertAdjacentHTML('afterend', htmlTemplate);
+            res = eChildBefore.nextSibling;
+        }
+        else {
+            if (eContainer.firstChild) {
+                // insert it at the first location
+                eContainer.insertAdjacentHTML('afterbegin', htmlTemplate);
+            }
+            else {
+                // otherwise eContainer is empty, so just append it
+                eContainer.innerHTML = htmlTemplate;
+            }
+            res = eContainer.firstChild;
+        }
+        return res;
     };
     Utils.toStringOrNull = function (value) {
         if (this.exists(value) && value.toString) {
@@ -620,23 +775,22 @@ var Utils = (function () {
             parent.appendChild(documentFragment);
         }
     };
-    // static prepend(parent: HTMLElement, child: HTMLElement): void {
-    //     if (this.exists(parent.firstChild)) {
-    //         parent.insertBefore(child, parent.firstChild);
-    //     } else {
-    //         parent.appendChild(child);
-    //     }
-    // }
     /**
      * If icon provided, use this (either a string, or a function callback).
-     * if not, then use the second parameter, which is the svgFactory function
+     * if not, then use the default icon from the theme
      */
-    Utils.createIcon = function (iconName, gridOptionsWrapper, column, svgFactoryFunc) {
-        var eResult = document.createElement('span');
-        eResult.appendChild(this.createIconNoSpan(iconName, gridOptionsWrapper, column, svgFactoryFunc));
-        return eResult;
+    Utils.createIcon = function (iconName, gridOptionsWrapper, column) {
+        var iconContents = this.createIconNoSpan(iconName, gridOptionsWrapper, column);
+        if (iconContents.className.indexOf('ag-icon') > -1) {
+            return iconContents;
+        }
+        else {
+            var eResult = document.createElement('span');
+            eResult.appendChild(iconContents);
+            return eResult;
+        }
     };
-    Utils.createIconNoSpan = function (iconName, gridOptionsWrapper, column, svgFactoryFunc) {
+    Utils.createIconNoSpan = function (iconName, gridOptionsWrapper, column) {
         var userProvidedIcon;
         // check col for icon first
         if (column && column.getColDef().icons) {
@@ -648,7 +802,7 @@ var Utils = (function () {
         }
         // now if user provided, use it
         if (userProvidedIcon) {
-            var rendererResult;
+            var rendererResult = void 0;
             if (typeof userProvidedIcon === 'function') {
                 rendererResult = userProvidedIcon();
             }
@@ -669,21 +823,23 @@ var Utils = (function () {
             }
         }
         else {
-            // otherwise we use the built in icon
-            if (svgFactoryFunc) {
-                return svgFactoryFunc();
+            var span = document.createElement('span');
+            var cssClass = this.iconNameClassMap[iconName];
+            if (!cssClass) {
+                throw new Error(iconName + " did not find class");
             }
-            else {
-                return null;
-            }
+            span.setAttribute("class", "ag-icon ag-icon-" + cssClass);
+            return span;
         }
     };
     Utils.addStylesToElement = function (eElement, styles) {
+        var _this = this;
         if (!styles) {
             return;
         }
         Object.keys(styles).forEach(function (key) {
-            eElement.style[key] = styles[key];
+            var keyCamelCase = _this.hyphenToCamelCase(key);
+            eElement.style[keyCamelCase] = styles[key];
         });
     };
     Utils.isHorizontalScrollShowing = function (element) {
@@ -735,9 +891,11 @@ var Utils = (function () {
     Utils.isBrowserSafari = function () {
         if (this.isSafari === undefined) {
             var anyWindow = window;
-            // taken from https://github.com/ceolter/ag-grid/issues/550
+            // taken from https://github.com/ag-grid/ag-grid/issues/550
             this.isSafari = Object.prototype.toString.call(anyWindow.HTMLElement).indexOf('Constructor') > 0
-                || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!anyWindow.safari || anyWindow.safari.pushNotification);
+                || (function (p) {
+                    return p.toString() === "[object SafariRemoteNotification]";
+                })(!anyWindow.safari || anyWindow.safari.pushNotification);
         }
         return this.isSafari;
     };
@@ -752,7 +910,6 @@ var Utils = (function () {
         if (this.isFirefox === undefined) {
             var anyWindow = window;
             this.isFirefox = typeof anyWindow.InstallTrigger !== 'undefined';
-            ;
         }
         return this.isFirefox;
     };
@@ -761,6 +918,60 @@ var Utils = (function () {
     Utils.getTarget = function (event) {
         var eventNoType = event;
         return eventNoType.target || eventNoType.srcElement;
+    };
+    Utils.isElementInEventPath = function (element, event) {
+        if (!event || !element) {
+            return false;
+        }
+        var path = exports._.getEventPath(event);
+        return path.indexOf(element) >= 0;
+    };
+    Utils.createEventPath = function (event) {
+        var res = [];
+        var pointer = exports._.getTarget(event);
+        while (pointer) {
+            res.push(pointer);
+            pointer = pointer.parentElement;
+        }
+        return res;
+    };
+    // firefox doesn't have event.path set, or any alternative to it, so we hack
+    // it in. this is needed as it's to late to work out the path when the item is
+    // removed from the dom
+    Utils.addAgGridEventPath = function (event) {
+        event.__agGridEventPath = this.getEventPath(event);
+    };
+    Utils.getEventPath = function (event) {
+        // https://stackoverflow.com/questions/39245488/event-path-undefined-with-firefox-and-vue-js
+        // https://developer.mozilla.org/en-US/docs/Web/API/Event
+        var eventNoType = event;
+        if (event.deepPath) {
+            // IE supports deep path
+            return event.deepPath();
+        }
+        else if (eventNoType.path) {
+            // Chrome supports path
+            return eventNoType.path;
+        }
+        else if (eventNoType.composedPath) {
+            // Firefox supports composePath
+            return eventNoType.composedPath();
+        }
+        else if (eventNoType.__agGridEventPath) {
+            // Firefox supports composePath
+            return eventNoType.__agGridEventPath;
+        }
+        else {
+            // and finally, if none of the above worked,
+            // we create the path ourselves
+            return this.createEventPath(event);
+        }
+    };
+    Utils.forEachSnapshotFirst = function (list, callback) {
+        if (list) {
+            var arrayCopy = list.slice(0);
+            arrayCopy.forEach(callback);
+        }
     };
     // taken from: http://stackoverflow.com/questions/1038727/how-to-get-browser-width-using-javascript-code
     Utils.getBodyWidth = function () {
@@ -814,17 +1025,45 @@ var Utils = (function () {
             });
         }
     };
+    // from https://gist.github.com/youssman/745578062609e8acac9f
+    Utils.camelCaseToHyphen = function (str) {
+        if (str === null || str === undefined) {
+            return null;
+        }
+        return str.replace(/([A-Z])/g, function (g) { return '-' + g[0].toLowerCase(); });
+    };
+    // from https://stackoverflow.com/questions/6660977/convert-hyphens-to-camel-case-camelcase
+    Utils.hyphenToCamelCase = function (str) {
+        if (str === null || str === undefined) {
+            return null;
+        }
+        return str.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
+    };
+    // pas in an object eg: {color: 'black', top: '25px'} and it returns "color: black; top: 25px;" for html
+    Utils.cssStyleObjectToMarkup = function (stylesToUse) {
+        var _this = this;
+        if (!stylesToUse) {
+            return '';
+        }
+        var resParts = [];
+        this.iterateObject(stylesToUse, function (styleKey, styleValue) {
+            var styleKeyDashed = _this.camelCaseToHyphen(styleKey);
+            resParts.push(styleKeyDashed + ": " + styleValue + ";");
+        });
+        return resParts.join(' ');
+    };
     /**
      * From http://stackoverflow.com/questions/9716468/is-there-any-function-like-isnumeric-in-javascript-to-validate-numbers
      */
     Utils.isNumeric = function (value) {
+        if (value === '')
+            return false;
         return !isNaN(parseFloat(value)) && isFinite(value);
     };
     Utils.escape = function (toEscape) {
-        if (toEscape === null)
-            return null;
-        if (!toEscape.replace)
+        if (toEscape === null || toEscape === undefined || !toEscape.replace) {
             return toEscape;
+        }
         return toEscape.replace(reUnescapedHtml, function (chr) { return HTML_ESCAPES[chr]; });
     };
     // Taken from here: https://github.com/facebook/fixed-data-table/blob/master/src/vendor_upstream/dom/normalizeWheel.js
@@ -981,11 +1220,167 @@ var Utils = (function () {
         if (pY && !sY) {
             sY = (pY < 1) ? -1 : 1;
         }
-        return { spinX: sX,
+        return {
+            spinX: sX,
             spinY: sY,
             pixelX: pX,
-            pixelY: pY };
+            pixelY: pY
+        };
     };
+    /**
+     * https://stackoverflow.com/questions/24004791/can-someone-explain-the-debounce-function-in-javascript
+     */
+    Utils.debounce = function (func, wait, immediate) {
+        if (immediate === void 0) { immediate = false; }
+        // 'private' variable for instance
+        // The returned function will be able to reference this due to closure.
+        // Each call to the returned function will share this common timer.
+        var timeout;
+        // Calling debounce returns a new anonymous function
+        return function () {
+            // reference the context and args for the setTimeout function
+            var context = this, args = arguments;
+            // Should the function be called now? If immediate is true
+            //   and not already in a timeout then the answer is: Yes
+            var callNow = immediate && !timeout;
+            // This is the basic debounce behaviour where you can call this
+            //   function several times, but it will only execute once
+            //   [before or after imposing a delay].
+            //   Each time the returned function is called, the timer starts over.
+            clearTimeout(timeout);
+            // Set the new timeout
+            timeout = setTimeout(function () {
+                // Inside the timeout function, clear the timeout variable
+                // which will let the next execution run when in 'immediate' mode
+                timeout = null;
+                // Check if the function already ran with the immediate flag
+                if (!immediate) {
+                    // Call the original function with apply
+                    // apply lets you define the 'this' object as well as the arguments
+                    //    (both captured before setTimeout)
+                    func.apply(context, args);
+                }
+            }, wait);
+            // Immediate mode and no wait timer? Execute the function..
+            if (callNow)
+                func.apply(context, args);
+        };
+    };
+    ;
+    Utils.executeInAWhile = function (funcs) {
+        this.executeAfter(funcs, 400);
+    };
+    Utils.executeNextVMTurn = function (funcs) {
+        this.executeAfter(funcs, 0);
+    };
+    Utils.executeAfter = function (funcs, millis) {
+        if (funcs.length > 0) {
+            setTimeout(function () {
+                funcs.forEach(function (func) { return func(); });
+            }, millis);
+        }
+    };
+    Utils.referenceCompare = function (left, right) {
+        if (left == null && right == null)
+            return true;
+        if (left == null && right)
+            return false;
+        if (left && right == null)
+            return false;
+        return left === right;
+    };
+    Utils.get = function (source, expression, defaultValue) {
+        if (source == null)
+            return defaultValue;
+        if (expression.indexOf('.') > -1) {
+            var fields = expression.split('.');
+            var thisKey = fields[0];
+            var nextValue = source[thisKey];
+            if (nextValue != null) {
+                return Utils.get(nextValue, fields.slice(1, fields.length).join('.'), defaultValue);
+            }
+            else {
+                return defaultValue;
+            }
+        }
+        else {
+            var nextValue = source[expression];
+            return nextValue != null ? nextValue : defaultValue;
+        }
+    };
+    Utils.addSafePassiveEventListener = function (eElement, event, listener) {
+        eElement.addEventListener(event, listener, (Utils.passiveEvents.indexOf(event) > -1 ? { passive: true } : null));
+    };
+    Utils.camelCaseToHumanText = function (camelCase) {
+        if (camelCase == null)
+            return null;
+        // Who needs to learn how to code when you have stack overflow!
+        // from: https://stackoverflow.com/questions/15369566/putting-space-in-camel-case-string-using-regular-expression
+        var rex = /([A-Z])([A-Z])([a-z])|([a-z])([A-Z])/g;
+        var words = camelCase.replace(rex, '$1$4 $2$3$5').replace('.', ' ').split(' ');
+        return words.map(function (word) { return word.substring(0, 1).toUpperCase() + ((word.length > 1) ? word.substring(1, word.length) : ''); }).join(' ');
+    };
+    Utils.sortRowNodesByOrder = function (rowNodes, rowNodeOrder) {
+        if (!rowNodes) {
+            return;
+        }
+        rowNodes.sort(function (nodeA, nodeB) {
+            var positionA = rowNodeOrder[nodeA.id];
+            var positionB = rowNodeOrder[nodeB.id];
+            return positionA - positionB;
+        });
+    };
+    Utils.PRINTABLE_CHARACTERS = 'qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890!"£$%^&*()_+-=[];\'#,./\|<>?:@~{}';
+    // static prepend(parent: HTMLElement, child: HTMLElement): void {
+    //     if (this.exists(parent.firstChild)) {
+    //         parent.insertBefore(child, parent.firstChild);
+    //     } else {
+    //         parent.appendChild(child);
+    //     }
+    // }
+    Utils.iconNameClassMap = {
+        'columnMovePin': 'pin',
+        'columnMoveAdd': 'plus',
+        'columnMoveHide': 'eye-slash',
+        'columnMoveMove': 'arrows',
+        'columnMoveLeft': 'left',
+        'columnMoveRight': 'right',
+        'columnMoveGroup': 'group',
+        'columnMoveValue': 'aggregation',
+        'columnMovePivot': 'pivot',
+        'dropNotAllowed': 'not-allowed',
+        'groupContracted': 'expanded',
+        'groupExpanded': 'contracted',
+        'checkboxChecked': 'checkbox-checked',
+        'checkboxUnchecked': 'checkbox-unchecked',
+        'checkboxIndeterminate': 'checkbox-indeterminate',
+        'checkboxCheckedReadOnly': 'checkbox-checked-readonly',
+        'checkboxUncheckedReadOnly': 'checkbox-unchecked-readonly',
+        'checkboxIndeterminateReadOnly': 'checkbox-indeterminate-readonly',
+        'groupLoading': 'loading',
+        'menu': 'menu',
+        'filter': 'filter',
+        'columns': 'columns',
+        'menuPin': 'pin',
+        'menuValue': 'aggregation',
+        'menuAddRowGroup': 'group',
+        'menuRemoveRowGroup': 'group',
+        'clipboardCopy': 'copy',
+        'clipboardCut': 'cut',
+        'clipboardPaste': 'paste',
+        'pivotPanel': 'pivot',
+        'rowGroupPanel': 'group',
+        'valuePanel': 'aggregation',
+        'columnGroupOpened': 'expanded',
+        'columnGroupClosed': 'contracted',
+        'columnSelectClosed': 'tree-closed',
+        'columnSelectOpen': 'tree-open',
+        // from deprecated header, remove at some point
+        'sortAscending': 'asc',
+        'sortDescending': 'desc',
+        'sortUnSort': 'none'
+    };
+    Utils.passiveEvents = ['touchstart', 'touchend', 'touchmove', 'touchcancel'];
     return Utils;
 }());
 exports.Utils = Utils;
@@ -1001,7 +1396,88 @@ var NumberSequence = (function () {
         this.nextValue += this.step;
         return valToReturn;
     };
+    NumberSequence.prototype.peek = function () {
+        return this.nextValue;
+    };
+    NumberSequence.prototype.skip = function (count) {
+        this.nextValue += count;
+    };
     return NumberSequence;
 }());
 exports.NumberSequence = NumberSequence;
 exports._ = Utils;
+var PromiseStatus;
+(function (PromiseStatus) {
+    PromiseStatus[PromiseStatus["IN_PROGRESS"] = 0] = "IN_PROGRESS";
+    PromiseStatus[PromiseStatus["RESOLVED"] = 1] = "RESOLVED";
+})(PromiseStatus = exports.PromiseStatus || (exports.PromiseStatus = {}));
+var Promise = (function () {
+    function Promise(callback) {
+        this.status = PromiseStatus.IN_PROGRESS;
+        this.resolution = null;
+        this.listOfWaiters = [];
+        callback(this.onDone.bind(this), this.onReject.bind(this));
+    }
+    Promise.all = function (toCombine) {
+        return new Promise(function (resolve) {
+            var combinedValues = [];
+            var remainingToResolve = toCombine.length;
+            toCombine.forEach(function (source, index) {
+                source.then(function (sourceResolved) {
+                    remainingToResolve--;
+                    combinedValues[index] = sourceResolved;
+                    if (remainingToResolve == 0) {
+                        resolve(combinedValues);
+                    }
+                });
+                combinedValues.push(null);
+            });
+        });
+    };
+    Promise.resolve = function (value) {
+        return new Promise(function (resolve) { return resolve(value); });
+    };
+    Promise.external = function () {
+        var capture;
+        var promise = new Promise(function (resolve) {
+            capture = resolve;
+        });
+        return {
+            promise: promise,
+            resolve: function (value) {
+                capture(value);
+            }
+        };
+    };
+    Promise.prototype.then = function (func) {
+        if (this.status === PromiseStatus.IN_PROGRESS) {
+            this.listOfWaiters.push(func);
+        }
+        else {
+            func(this.resolution);
+        }
+    };
+    Promise.prototype.map = function (adapter) {
+        var _this = this;
+        return new Promise(function (resolve) {
+            _this.then(function (unmapped) {
+                resolve(adapter(unmapped));
+            });
+        });
+    };
+    Promise.prototype.resolveNow = function (ifNotResolvedValue, ifResolved) {
+        if (this.status == PromiseStatus.IN_PROGRESS)
+            return ifNotResolvedValue;
+        return ifResolved(this.resolution);
+    };
+    Promise.prototype.onDone = function (value) {
+        this.status = PromiseStatus.RESOLVED;
+        this.resolution = value;
+        this.listOfWaiters.forEach(function (waiter) { return waiter(value); });
+    };
+    Promise.prototype.onReject = function (params) {
+        console.warn('TBI');
+    };
+    return Promise;
+}());
+exports.Promise = Promise;

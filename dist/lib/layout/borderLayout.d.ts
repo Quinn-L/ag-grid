@@ -1,6 +1,6 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 export declare class BorderLayout {
     private static TEMPLATE_FULL_HEIGHT;
     private static TEMPLATE_NORMAL;
@@ -19,7 +19,8 @@ export declare class BorderLayout {
     private eCenterChildLayout;
     private isLayoutPanel;
     private fullHeight;
-    private layoutActive;
+    private horizontalLayoutActive;
+    private verticalLayoutActive;
     private eGui;
     private id;
     private childPanels;
@@ -32,6 +33,7 @@ export declare class BorderLayout {
     constructor(params: any);
     addSizeChangeListener(listener: Function): void;
     fireSizeChanged(): void;
+    private getRefElement(refName);
     private setupPanels(params);
     private setupPanel(content, ePanel);
     getGui(): HTMLElement;

@@ -32,7 +32,7 @@ export interface ICellEditor {
     focusOut?(): void;
 }
 
-export interface ICellEditorComp extends ICellEditor, IComponent<ICellEditorParams>{
+export interface ICellEditorComp extends ICellEditor, IComponent<ICellEditorParams> {
 
 }
 
@@ -66,4 +66,6 @@ export interface ICellEditorParams {
     onKeyDown: (event: KeyboardEvent)=>void;
     stopEditing: ()=>void;
     eGridCell: HTMLElement;
+    parseValue: (value: any) => any;
+    formatValue: (value: any) => any;
 }

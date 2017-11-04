@@ -1,6 +1,6 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { Column } from "../../entities/column";
 import { RowNode } from "../../entities/rowNode";
 import { GridApi } from "../../gridApi";
@@ -59,4 +59,6 @@ export interface ICellEditorParams {
     onKeyDown: (event: KeyboardEvent) => void;
     stopEditing: () => void;
     eGridCell: HTMLElement;
+    parseValue: (value: any) => any;
+    formatValue: (value: any) => any;
 }

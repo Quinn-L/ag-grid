@@ -1,6 +1,6 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { RowNode } from "../../entities/rowNode";
 import { IRowNodeStage, StageExecuteParams } from "../../interfaces/iRowNodeStage";
 export declare class FlattenStage implements IRowNodeStage {
@@ -11,8 +11,8 @@ export declare class FlattenStage implements IRowNodeStage {
     private columnController;
     execute(params: StageExecuteParams): RowNode[];
     private resetRowTops(rowNode);
-    private recursivelyAddToRowsToDisplay(rowsToFlatten, result, nextRowTop, reduce);
-    private addRowNodeToRowsToDisplay(rowNode, result, nextRowTop);
+    private recursivelyAddToRowsToDisplay(rowsToFlatten, result, nextRowTop, skipLeafNodes, uiLevel);
+    private addRowNodeToRowsToDisplay(rowNode, result, nextRowTop, uiLevel);
     private ensureFooterNodeExists(groupNode);
     private createFlowerNode(parentNode);
 }

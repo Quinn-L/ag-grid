@@ -1,7 +1,7 @@
 
 import {GridOptions} from "./entities/gridOptions";
 import {GridOptionsWrapper} from "./gridOptionsWrapper";
-import {ColumnController} from "./columnController/columnController";
+import {ColumnApi, ColumnController} from "./columnController/columnController";
 import {RowRenderer} from "./rendering/rowRenderer";
 import {FilterManager} from "./filter/filterManager";
 import {EventService} from "./eventService";
@@ -9,7 +9,7 @@ import {GridPanel} from "./gridPanel/gridPanel";
 import {Logger, LoggerFactory} from "./logger";
 import {Constants} from "./constants";
 import {PopupService} from "./widgets/popupService";
-import {Events} from "./events";
+import {Events, GridSizeChangedEvent} from "./events";
 import {Utils as _} from "./utils";
 import {BorderLayout} from "./layout/borderLayout";
 import {PreDestroy, Bean, Qualifier, Autowired, PostConstruct, Optional, Context} from "./context/context";
@@ -19,6 +19,7 @@ import {Component} from "./widgets/component";
 import {ICompFactory} from "./interfaces/iCompFactory";
 import {IFrameworkFactory} from "./interfaces/iFrameworkFactory";
 import {PaginationComp} from "./rowModels/pagination/paginationComp";
+import {GridApi} from "./gridApi";
 
 @Bean('gridCore')
 export class GridCore {
@@ -40,6 +41,9 @@ export class GridCore {
     @Autowired('popupService') private popupService: PopupService;
     @Autowired('focusedCellController') private focusedCellController: FocusedCellController;
     @Autowired('context') private context: Context;
+
+    @Autowired('columnApi') private columnApi: ColumnApi;
+    @Autowired('gridApi') private gridApi: GridApi;
 
     @Optional('rowGroupCompFactory') private rowGroupCompFactory: ICompFactory;
     @Optional('pivotCompFactory') private pivotCompFactory: ICompFactory;
@@ -66,7 +70,7 @@ export class GridCore {
     @PostConstruct
     public init(): void {
 
-        var eSouthPanel = this.createSouthPanel();
+        let eSouthPanel = this.createSouthPanel();
 
         let eastPanel: HTMLElement;
         let westPanel: HTMLElement;
@@ -79,7 +83,7 @@ export class GridCore {
             }
         }
 
-        var createTopPanelGui = this.createNorthPanel();
+        let createTopPanelGui = this.createNorthPanel();
 
         this.eRootPanel = new BorderLayout({
             center: this.gridPanel.getLayout(),
@@ -88,8 +92,23 @@ export class GridCore {
             north: createTopPanelGui,
             south: eSouthPanel,
             dontFill: this.gridOptionsWrapper.isForPrint(),
+            fillHorizontalOnly: this.gridOptionsWrapper.isAutoHeight(),
             name: 'eRootPanel'
         });
+
+        // parts of the CSS need to know if we are in 'for print' mode or not,
+        // so we add a class to allow applying CSS based on this.
+        if (this.gridOptionsWrapper.isForPrint()) {
+            _.addCssClass(this.eRootPanel.getGui(), 'ag-layout-for-print');
+            // kept to limit breaking changes, ag-no-scrolls was renamed to ag-layout-for-print
+            _.addCssClass(this.eRootPanel.getGui(), 'ag-no-scrolls');
+        } else if (this.gridOptionsWrapper.isAutoHeight()) {
+            _.addCssClass(this.eRootPanel.getGui(), 'ag-layout-auto-height');
+        } else {
+            _.addCssClass(this.eRootPanel.getGui(), 'ag-layout-normal');
+            // kept to limit breaking changes, ag-scrolls was renamed to ag-layout-normal
+            _.addCssClass(this.eRootPanel.getGui(), 'ag-scrolls');
+        }
 
         // see what the grid options are for default of toolbar
         this.showToolPanel(this.gridOptionsWrapper.isShowToolPanel());
@@ -134,9 +153,9 @@ export class GridCore {
 
         if (!this.gridOptionsWrapper.isEnterprise()) { return null; }
 
-        var topPanelGui = document.createElement('div');
+        let topPanelGui = document.createElement('div');
 
-        var dropPanelVisibleListener = this.onDropPanelVisible.bind(this);
+        let dropPanelVisibleListener = this.onDropPanelVisible.bind(this);
 
         this.rowGroupComp = this.rowGroupCompFactory.create();
         this.pivotComp = this.pivotCompFactory.create();
@@ -158,7 +177,7 @@ export class GridCore {
     }
 
     private onDropPanelVisible(): void {
-        var bothVisible = this.rowGroupComp.isVisible() && this.pivotComp.isVisible();
+        let bothVisible = this.rowGroupComp.isVisible() && this.pivotComp.isVisible();
         this.rowGroupComp.addOrRemoveCssClass('ag-width-half', bothVisible);
         this.pivotComp.addOrRemoveCssClass('ag-width-half', bothVisible);
     }
@@ -173,10 +192,9 @@ export class GridCore {
             console.warn('ag-Grid: status bar is only available in ag-Grid-Enterprise');
         }
 
-        var statusBarEnabled = this.statusBar && this.gridOptionsWrapper.isEnableStatusBar();
-        let isPaging = this.gridOptionsWrapper.isPagination() ||
-            this.gridOptionsWrapper.isRowModelServerPagination();
-        var paginationPanelEnabled = isPaging
+        let statusBarEnabled = this.statusBar && this.gridOptionsWrapper.isEnableStatusBar();
+        let isPaging = this.gridOptionsWrapper.isPagination();
+        let paginationPanelEnabled = isPaging
             && !this.gridOptionsWrapper.isForPrint()
             && !this.gridOptionsWrapper.isSuppressPaginationPanel();
 
@@ -184,7 +202,7 @@ export class GridCore {
             return null;
         }
 
-        var eSouthPanel = document.createElement('div');
+        let eSouthPanel = document.createElement('div');
         if (statusBarEnabled) {
             eSouthPanel.appendChild(this.statusBar.getGui());
         }
@@ -203,12 +221,12 @@ export class GridCore {
     private onRowGroupChanged(): void {
         if (!this.rowGroupComp) { return; }
 
-        var rowGroupPanelShow = this.gridOptionsWrapper.getRowGroupPanelShow();
+        let rowGroupPanelShow = this.gridOptionsWrapper.getRowGroupPanelShow();
 
         if (rowGroupPanelShow===Constants.ALWAYS) {
             this.rowGroupComp.setVisible(true);
         } else if (rowGroupPanelShow===Constants.ONLY_WHEN_GROUPING) {
-            var grouping = !this.columnController.isRowGroupEmpty();
+            let grouping = !this.columnController.isRowGroupEmpty();
             this.rowGroupComp.setVisible(grouping);
         } else {
             this.rowGroupComp.setVisible(false);
@@ -218,14 +236,14 @@ export class GridCore {
     }
     
     private addWindowResizeListener(): void {
-        var eventListener = this.doLayout.bind(this);
+        let eventListener = this.doLayout.bind(this);
         window.addEventListener('resize', eventListener);
         this.destroyFunctions.push( ()=> window.removeEventListener('resize', eventListener) );
     }
 
     private periodicallyDoLayout() {
         if (!this.finished) {
-            var intervalMillis = this.gridOptionsWrapper.getLayoutInterval();
+            let intervalMillis = this.gridOptionsWrapper.getLayoutInterval();
             // if interval is negative, this stops the layout from happening
             if (intervalMillis>0){
                 this.frameworkFactory.setTimeout( () => {
@@ -271,17 +289,18 @@ export class GridCore {
         this.destroyFunctions.forEach(func => func());
     }
 
-    public ensureNodeVisible(comparator: any) {
+    // Valid values for position are bottom, middle and top
+    public ensureNodeVisible(comparator: any, position:string = 'top') {
         if (this.doingVirtualPaging) {
             throw 'Cannot use ensureNodeVisible when doing virtual paging, as we cannot check rows that are not in memory';
         }
         // look for the node index we want to display
-        var rowCount = this.rowModel.getPageLastRow() + 1;
-        var comparatorIsAFunction = typeof comparator === 'function';
-        var indexToSelect = -1;
+        let rowCount = this.rowModel.getPageLastRow() + 1;
+        let comparatorIsAFunction = typeof comparator === 'function';
+        let indexToSelect = -1;
         // go through all the nodes, find the one we want to show
-        for (var i = 0; i < rowCount; i++) {
-            var node = this.rowModel.getRow(i);
+        for (let i = 0; i < rowCount; i++) {
+            let node = this.rowModel.getRow(i);
             if (comparatorIsAFunction) {
                 if (comparator(node)) {
                     indexToSelect = i;
@@ -296,14 +315,14 @@ export class GridCore {
             }
         }
         if (indexToSelect >= 0) {
-            this.gridPanel.ensureIndexVisible(indexToSelect);
+            this.gridPanel.ensureIndexVisible(indexToSelect, position);
         }
     }
 
     public doLayout() {
         // need to do layout first, as drawVirtualRows and setPinnedColHeight
         // need to know the result of the resizing of the panels.
-        var sizeChanged = this.eRootPanel.doLayout();
+        let sizeChanged = this.eRootPanel.doLayout();
         // not sure why, this is a hack, but if size changed, it may need to be called
         // again - as the size change can change whether scrolls are visible or not (i think).
         // to see why, take this second 'doLayout' call out, and see example in docs for
@@ -314,12 +333,15 @@ export class GridCore {
         }
         // both of the two below should be done in gridPanel, the gridPanel should register 'resize' to the panel
         if (sizeChanged) {
-            this.rowRenderer.drawVirtualRowsWithLock();
-            var event = {
+            this.rowRenderer.redrawAfterScroll();
+            let event: GridSizeChangedEvent = {
+                type: Events.EVENT_GRID_SIZE_CHANGED,
                 clientWidth: this.eRootPanel.getGui().clientWidth,
-                clientHeight: this.eRootPanel.getGui().clientHeight
+                clientHeight: this.eRootPanel.getGui().clientHeight,
+                api: this.gridApi,
+                columnApi: this.columnApi
             };
-            this.eventService.dispatchEvent(Events.EVENT_GRID_SIZE_CHANGED, event);
+            this.eventService.dispatchEvent(event);
         }
     }
 }

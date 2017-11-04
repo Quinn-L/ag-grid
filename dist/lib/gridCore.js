@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -34,6 +34,7 @@ var context_1 = require("./context/context");
 var focusedCellController_1 = require("./focusedCellController");
 var component_1 = require("./widgets/component");
 var paginationComp_1 = require("./rowModels/pagination/paginationComp");
+var gridApi_1 = require("./gridApi");
 var GridCore = (function () {
     function GridCore(loggerFactory) {
         this.destroyFunctions = [];
@@ -61,8 +62,24 @@ var GridCore = (function () {
             north: createTopPanelGui,
             south: eSouthPanel,
             dontFill: this.gridOptionsWrapper.isForPrint(),
+            fillHorizontalOnly: this.gridOptionsWrapper.isAutoHeight(),
             name: 'eRootPanel'
         });
+        // parts of the CSS need to know if we are in 'for print' mode or not,
+        // so we add a class to allow applying CSS based on this.
+        if (this.gridOptionsWrapper.isForPrint()) {
+            utils_1.Utils.addCssClass(this.eRootPanel.getGui(), 'ag-layout-for-print');
+            // kept to limit breaking changes, ag-no-scrolls was renamed to ag-layout-for-print
+            utils_1.Utils.addCssClass(this.eRootPanel.getGui(), 'ag-no-scrolls');
+        }
+        else if (this.gridOptionsWrapper.isAutoHeight()) {
+            utils_1.Utils.addCssClass(this.eRootPanel.getGui(), 'ag-layout-auto-height');
+        }
+        else {
+            utils_1.Utils.addCssClass(this.eRootPanel.getGui(), 'ag-layout-normal');
+            // kept to limit breaking changes, ag-scrolls was renamed to ag-layout-normal
+            utils_1.Utils.addCssClass(this.eRootPanel.getGui(), 'ag-scrolls');
+        }
         // see what the grid options are for default of toolbar
         this.showToolPanel(this.gridOptionsWrapper.isShowToolPanel());
         this.eGridDiv.appendChild(this.eRootPanel.getGui());
@@ -125,8 +142,7 @@ var GridCore = (function () {
             console.warn('ag-Grid: status bar is only available in ag-Grid-Enterprise');
         }
         var statusBarEnabled = this.statusBar && this.gridOptionsWrapper.isEnableStatusBar();
-        var isPaging = this.gridOptionsWrapper.isPagination() ||
-            this.gridOptionsWrapper.isRowModelServerPagination();
+        var isPaging = this.gridOptionsWrapper.isPagination();
         var paginationPanelEnabled = isPaging
             && !this.gridOptionsWrapper.isForPrint()
             && !this.gridOptionsWrapper.isSuppressPaginationPanel();
@@ -209,7 +225,9 @@ var GridCore = (function () {
         this.logger.log('Grid DOM removed');
         this.destroyFunctions.forEach(function (func) { return func(); });
     };
-    GridCore.prototype.ensureNodeVisible = function (comparator) {
+    // Valid values for position are bottom, middle and top
+    GridCore.prototype.ensureNodeVisible = function (comparator, position) {
+        if (position === void 0) { position = 'top'; }
         if (this.doingVirtualPaging) {
             throw 'Cannot use ensureNodeVisible when doing virtual paging, as we cannot check rows that are not in memory';
         }
@@ -235,7 +253,7 @@ var GridCore = (function () {
             }
         }
         if (indexToSelect >= 0) {
-            this.gridPanel.ensureIndexVisible(indexToSelect);
+            this.gridPanel.ensureIndexVisible(indexToSelect, position);
         }
     };
     GridCore.prototype.doLayout = function () {
@@ -252,107 +270,118 @@ var GridCore = (function () {
         }
         // both of the two below should be done in gridPanel, the gridPanel should register 'resize' to the panel
         if (sizeChanged) {
-            this.rowRenderer.drawVirtualRowsWithLock();
-            var event = {
+            this.rowRenderer.redrawAfterScroll();
+            var event_1 = {
+                type: events_1.Events.EVENT_GRID_SIZE_CHANGED,
                 clientWidth: this.eRootPanel.getGui().clientWidth,
-                clientHeight: this.eRootPanel.getGui().clientHeight
+                clientHeight: this.eRootPanel.getGui().clientHeight,
+                api: this.gridApi,
+                columnApi: this.columnApi
             };
-            this.eventService.dispatchEvent(events_1.Events.EVENT_GRID_SIZE_CHANGED, event);
+            this.eventService.dispatchEvent(event_1);
         }
     };
+    __decorate([
+        context_1.Autowired('gridOptions'),
+        __metadata("design:type", Object)
+    ], GridCore.prototype, "gridOptions", void 0);
+    __decorate([
+        context_1.Autowired('gridOptionsWrapper'),
+        __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+    ], GridCore.prototype, "gridOptionsWrapper", void 0);
+    __decorate([
+        context_1.Autowired('rowModel'),
+        __metadata("design:type", Object)
+    ], GridCore.prototype, "rowModel", void 0);
+    __decorate([
+        context_1.Autowired('frameworkFactory'),
+        __metadata("design:type", Object)
+    ], GridCore.prototype, "frameworkFactory", void 0);
+    __decorate([
+        context_1.Autowired('columnController'),
+        __metadata("design:type", columnController_1.ColumnController)
+    ], GridCore.prototype, "columnController", void 0);
+    __decorate([
+        context_1.Autowired('rowRenderer'),
+        __metadata("design:type", rowRenderer_1.RowRenderer)
+    ], GridCore.prototype, "rowRenderer", void 0);
+    __decorate([
+        context_1.Autowired('filterManager'),
+        __metadata("design:type", filterManager_1.FilterManager)
+    ], GridCore.prototype, "filterManager", void 0);
+    __decorate([
+        context_1.Autowired('eventService'),
+        __metadata("design:type", eventService_1.EventService)
+    ], GridCore.prototype, "eventService", void 0);
+    __decorate([
+        context_1.Autowired('gridPanel'),
+        __metadata("design:type", gridPanel_1.GridPanel)
+    ], GridCore.prototype, "gridPanel", void 0);
+    __decorate([
+        context_1.Autowired('eGridDiv'),
+        __metadata("design:type", HTMLElement)
+    ], GridCore.prototype, "eGridDiv", void 0);
+    __decorate([
+        context_1.Autowired('$scope'),
+        __metadata("design:type", Object)
+    ], GridCore.prototype, "$scope", void 0);
+    __decorate([
+        context_1.Autowired('quickFilterOnScope'),
+        __metadata("design:type", String)
+    ], GridCore.prototype, "quickFilterOnScope", void 0);
+    __decorate([
+        context_1.Autowired('popupService'),
+        __metadata("design:type", popupService_1.PopupService)
+    ], GridCore.prototype, "popupService", void 0);
+    __decorate([
+        context_1.Autowired('focusedCellController'),
+        __metadata("design:type", focusedCellController_1.FocusedCellController)
+    ], GridCore.prototype, "focusedCellController", void 0);
+    __decorate([
+        context_1.Autowired('context'),
+        __metadata("design:type", context_1.Context)
+    ], GridCore.prototype, "context", void 0);
+    __decorate([
+        context_1.Autowired('columnApi'),
+        __metadata("design:type", columnController_1.ColumnApi)
+    ], GridCore.prototype, "columnApi", void 0);
+    __decorate([
+        context_1.Autowired('gridApi'),
+        __metadata("design:type", gridApi_1.GridApi)
+    ], GridCore.prototype, "gridApi", void 0);
+    __decorate([
+        context_1.Optional('rowGroupCompFactory'),
+        __metadata("design:type", Object)
+    ], GridCore.prototype, "rowGroupCompFactory", void 0);
+    __decorate([
+        context_1.Optional('pivotCompFactory'),
+        __metadata("design:type", Object)
+    ], GridCore.prototype, "pivotCompFactory", void 0);
+    __decorate([
+        context_1.Optional('toolPanel'),
+        __metadata("design:type", component_1.Component)
+    ], GridCore.prototype, "toolPanel", void 0);
+    __decorate([
+        context_1.Optional('statusBar'),
+        __metadata("design:type", component_1.Component)
+    ], GridCore.prototype, "statusBar", void 0);
+    __decorate([
+        context_1.PostConstruct,
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], GridCore.prototype, "init", null);
+    __decorate([
+        context_1.PreDestroy,
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], GridCore.prototype, "destroy", null);
+    GridCore = __decorate([
+        context_1.Bean('gridCore'),
+        __param(0, context_1.Qualifier('loggerFactory')),
+        __metadata("design:paramtypes", [logger_1.LoggerFactory])
+    ], GridCore);
     return GridCore;
 }());
-__decorate([
-    context_1.Autowired('gridOptions'),
-    __metadata("design:type", Object)
-], GridCore.prototype, "gridOptions", void 0);
-__decorate([
-    context_1.Autowired('gridOptionsWrapper'),
-    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
-], GridCore.prototype, "gridOptionsWrapper", void 0);
-__decorate([
-    context_1.Autowired('rowModel'),
-    __metadata("design:type", Object)
-], GridCore.prototype, "rowModel", void 0);
-__decorate([
-    context_1.Autowired('frameworkFactory'),
-    __metadata("design:type", Object)
-], GridCore.prototype, "frameworkFactory", void 0);
-__decorate([
-    context_1.Autowired('columnController'),
-    __metadata("design:type", columnController_1.ColumnController)
-], GridCore.prototype, "columnController", void 0);
-__decorate([
-    context_1.Autowired('rowRenderer'),
-    __metadata("design:type", rowRenderer_1.RowRenderer)
-], GridCore.prototype, "rowRenderer", void 0);
-__decorate([
-    context_1.Autowired('filterManager'),
-    __metadata("design:type", filterManager_1.FilterManager)
-], GridCore.prototype, "filterManager", void 0);
-__decorate([
-    context_1.Autowired('eventService'),
-    __metadata("design:type", eventService_1.EventService)
-], GridCore.prototype, "eventService", void 0);
-__decorate([
-    context_1.Autowired('gridPanel'),
-    __metadata("design:type", gridPanel_1.GridPanel)
-], GridCore.prototype, "gridPanel", void 0);
-__decorate([
-    context_1.Autowired('eGridDiv'),
-    __metadata("design:type", HTMLElement)
-], GridCore.prototype, "eGridDiv", void 0);
-__decorate([
-    context_1.Autowired('$scope'),
-    __metadata("design:type", Object)
-], GridCore.prototype, "$scope", void 0);
-__decorate([
-    context_1.Autowired('quickFilterOnScope'),
-    __metadata("design:type", String)
-], GridCore.prototype, "quickFilterOnScope", void 0);
-__decorate([
-    context_1.Autowired('popupService'),
-    __metadata("design:type", popupService_1.PopupService)
-], GridCore.prototype, "popupService", void 0);
-__decorate([
-    context_1.Autowired('focusedCellController'),
-    __metadata("design:type", focusedCellController_1.FocusedCellController)
-], GridCore.prototype, "focusedCellController", void 0);
-__decorate([
-    context_1.Autowired('context'),
-    __metadata("design:type", context_1.Context)
-], GridCore.prototype, "context", void 0);
-__decorate([
-    context_1.Optional('rowGroupCompFactory'),
-    __metadata("design:type", Object)
-], GridCore.prototype, "rowGroupCompFactory", void 0);
-__decorate([
-    context_1.Optional('pivotCompFactory'),
-    __metadata("design:type", Object)
-], GridCore.prototype, "pivotCompFactory", void 0);
-__decorate([
-    context_1.Optional('toolPanel'),
-    __metadata("design:type", component_1.Component)
-], GridCore.prototype, "toolPanel", void 0);
-__decorate([
-    context_1.Optional('statusBar'),
-    __metadata("design:type", component_1.Component)
-], GridCore.prototype, "statusBar", void 0);
-__decorate([
-    context_1.PostConstruct,
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], GridCore.prototype, "init", null);
-__decorate([
-    context_1.PreDestroy,
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], GridCore.prototype, "destroy", null);
-GridCore = __decorate([
-    context_1.Bean('gridCore'),
-    __param(0, context_1.Qualifier('loggerFactory')),
-    __metadata("design:paramtypes", [logger_1.LoggerFactory])
-], GridCore);
 exports.GridCore = GridCore;

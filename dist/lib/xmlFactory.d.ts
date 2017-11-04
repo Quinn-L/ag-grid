@@ -1,6 +1,6 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 export declare class XmlFactory {
     createXml(xmlElement: XmlElement, booleanTransformer?: (currentValue: boolean) => string): string;
     private returnAttributeIfPopulated(key, value, booleanTransformer?);

@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -51,10 +51,11 @@ var NumberFilter = (function (_super) {
     };
     NumberFilter.prototype.initialiseFilterBodyUi = function () {
         this.filterNumber = null;
-        this.setFilterType(NumberFilter.EQUALS);
-        this.eFilterTextField = this.getGui().querySelector("#filterText");
-        this.addDestroyableEventListener(this.eFilterTextField, "input", this.onTextFieldsChanged.bind(this));
-        this.addDestroyableEventListener(this.eFilterToTextField, "input", this.onTextFieldsChanged.bind(this));
+        this.eFilterTextField = this.queryForHtmlInputElement("#filterText");
+        var debounceMs = this.filterParams.debounceMs != null ? this.filterParams.debounceMs : 500;
+        var toDebounce = utils_1.Utils.debounce(this.onTextFieldsChanged.bind(this), debounceMs);
+        this.addDestroyableEventListener(this.eFilterTextField, "input", toDebounce);
+        this.addDestroyableEventListener(this.eFilterToTextField, "input", toDebounce);
     };
     NumberFilter.prototype.afterGuiAttached = function () {
         this.eFilterTextField.focus();
@@ -121,7 +122,7 @@ var NumberFilter = (function (_super) {
     };
     NumberFilter.prototype.serialize = function () {
         return {
-            type: this.filter,
+            type: this.filter ? this.filter : this.defaultFilter,
             filter: this.filterNumber,
             filterTo: this.filterNumberTo,
             filterType: 'number'
@@ -137,28 +138,22 @@ var NumberFilter = (function (_super) {
         utils_1.Utils.setVisible(this.eNumberToPanel, visible);
     };
     NumberFilter.prototype.resetState = function () {
-        this.setFilterType(baseFilter_1.BaseFilter.EQUALS);
+        this.setFilterType(this.defaultFilter);
         this.setFilter(null);
         this.setFilterTo(null);
     };
     NumberFilter.prototype.setType = function (filterType) {
         this.setFilterType(filterType);
     };
+    NumberFilter.LESS_THAN = 'lessThan'; //3;
+    __decorate([
+        componentAnnotations_1.QuerySelector('#filterNumberToPanel'),
+        __metadata("design:type", HTMLElement)
+    ], NumberFilter.prototype, "eNumberToPanel", void 0);
+    __decorate([
+        componentAnnotations_1.QuerySelector('#filterToText'),
+        __metadata("design:type", HTMLInputElement)
+    ], NumberFilter.prototype, "eFilterToTextField", void 0);
     return NumberFilter;
 }(baseFilter_1.ScalarBaseFilter));
-NumberFilter.EQUALS = 'equals'; // 1;
-NumberFilter.NOT_EQUAL = 'notEqual'; //2;
-NumberFilter.LESS_THAN_OR_EQUAL = 'lessThanOrEqual'; //4;
-NumberFilter.GREATER_THAN = 'greaterThan'; //5;
-NumberFilter.GREATER_THAN_OR_EQUAL = 'greaterThan'; //6;
-NumberFilter.IN_RANGE = 'inRange';
-NumberFilter.LESS_THAN = 'lessThan'; //3;
-__decorate([
-    componentAnnotations_1.QuerySelector('#filterNumberToPanel'),
-    __metadata("design:type", HTMLElement)
-], NumberFilter.prototype, "eNumberToPanel", void 0);
-__decorate([
-    componentAnnotations_1.QuerySelector('#filterToText'),
-    __metadata("design:type", HTMLInputElement)
-], NumberFilter.prototype, "eFilterToTextField", void 0);
 exports.NumberFilter = NumberFilter;

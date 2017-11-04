@@ -1,20 +1,19 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
-import { ColDef } from "./entities/colDef";
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { Column } from "./entities/column";
 import { RowNode } from "./entities/rowNode";
 import { GridApi } from "./gridApi";
 import { ColumnApi } from "./columnController/columnController";
-export interface ExportParams {
+export interface BaseExportParams {
     skipHeader?: boolean;
     columnGroups?: boolean;
     skipFooters?: boolean;
     skipGroups?: boolean;
-    skipFloatingTop?: boolean;
-    skipFloatingBottom?: boolean;
+    skipPinnedTop?: boolean;
+    skipPinnedBottom?: boolean;
     suppressQuotes?: boolean;
-    columnKeys?: (Column | ColDef | string)[];
+    columnKeys?: (string | Column)[];
     fileName?: string;
     allColumns?: boolean;
     onlySelected?: boolean;
@@ -23,9 +22,11 @@ export interface ExportParams {
     processCellCallback?(params: ProcessCellForExportParams): string;
     processHeaderCallback?(params: ProcessHeaderForExportParams): string;
 }
-export interface CsvExportParams extends ExportParams {
-    customHeader?: string;
-    customFooter?: string;
+export interface ExportParams<T> extends BaseExportParams {
+    customHeader?: T;
+    customFooter?: T;
+}
+export interface CsvExportParams extends ExportParams<string> {
     columnSeparator?: string;
 }
 export interface ShouldRowBeSkippedParams {
@@ -40,6 +41,7 @@ export interface ProcessCellForExportParams {
     api: GridApi;
     columnApi: ColumnApi;
     context: any;
+    type: string;
 }
 export interface ProcessHeaderForExportParams {
     column: Column;

@@ -1,9 +1,8 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { BorderLayout } from "../layout/borderLayout";
 import { LoggerFactory } from "../logger";
-import { KeyboardBinding, KeyboardBindingGroup } from "../constants";
 import { BeanStub } from "../context/beanStub";
 import { RowContainerComponent } from "../rendering/rowContainerComponent";
 export interface RowContainerComponents {
@@ -21,13 +20,18 @@ export interface RowContainerComponents {
     floatingBottomFullWith: RowContainerComponent;
 }
 export declare class GridPanel extends BeanStub {
-    private masterSlaveService;
+    private alignedGridsService;
     private gridOptionsWrapper;
     private columnController;
     private rowRenderer;
-    private floatingRowModel;
+    private pinnedRowModel;
     private eventService;
+    private context;
+    private animationFrameService;
+    private navigationService;
     private paginationProxy;
+    private columnApi;
+    private gridApi;
     private rangeController;
     private dragService;
     private selectionController;
@@ -41,9 +45,6 @@ export declare class GridPanel extends BeanStub {
     private frameworkFactory;
     private layout;
     private logger;
-    private requestAnimationFrameExists;
-    private scrollLagCounter;
-    private scrollLagTicking;
     private eBodyViewport;
     private eRoot;
     private eBody;
@@ -75,16 +76,19 @@ export declare class GridPanel extends BeanStub {
     private eFloatingBottomViewport;
     private eFloatingBottomFullWidthCellContainer;
     private eAllCellContainers;
-    private lastLeftPosition;
-    private lastTopPosition;
-    private animationThreadCount;
+    private scrollLeft;
+    private nextScrollLeft;
+    private scrollTop;
+    private nextScrollTop;
+    private verticalRedrawNeeded;
     private bodyHeight;
-    private useScrollLag;
     private enableRtl;
     private forPrint;
+    private autoHeight;
     private scrollWidth;
     private pinningRight;
     private pinningLeft;
+    private useAnimationFrame;
     agWire(loggerFactory: LoggerFactory): void;
     getVerticalPixelRange(): any;
     destroy(): void;
@@ -97,17 +101,12 @@ export declare class GridPanel extends BeanStub {
     private disableBrowserDragging();
     private addEventListeners();
     private addDragListeners();
-    private addMouseEvents();
+    private addMouseListeners();
     private addKeyboardEvents();
     private addBodyViewportListener();
     private getRowForEvent(event);
     private processKeyboardEvent(eventName, keyboardEvent);
-    private handlePageScrollingKey(pagingKeyGroup, pagingKey, keyboardEvent);
-    private pageHorizontally(pagingKey);
-    private pageDiagonally(pagingKey);
-    private pageVertically(pagingKey);
     scrollToTop(): void;
-    private performScroll(scroll);
     private processMouseEvent(eventName, mouseEvent);
     private onContextMenu(mouseEvent);
     private preventDefaultOnContextMenu(mouseEvent);
@@ -119,10 +118,10 @@ export declare class GridPanel extends BeanStub {
     private createOverlayTemplate(name, defaultTemplate, userProvidedTemplate);
     private createLoadingOverlayTemplate();
     private createNoRowsOverlayTemplate();
-    ensureIndexVisible(index: any): void;
-    private getPrimaryScrollViewport();
+    ensureIndexVisible(index: any, position?: string): void;
+    getPrimaryScrollViewport(): HTMLElement;
     getCenterWidth(): number;
-    private isHorizontalScrollShowing();
+    isHorizontalScrollShowing(): boolean;
     private isVerticalScrollShowing();
     private isBodyVerticalScrollShowing();
     periodicallyCheck(): void;
@@ -168,21 +167,19 @@ export declare class GridPanel extends BeanStub {
     private addScrollListener();
     private onBodyScroll();
     private onBodyHorizontalScroll();
+    private doHorizontalScroll();
     private onBodyVerticalScroll();
     private onVerticalScroll(sourceElement);
+    executeFrame(): boolean;
+    private redrawRowsAfterScroll();
     private isBodyVerticalScrollActive();
     private addIEPinFix(onPinnedRightScroll, onPinnedLeftScroll);
     private setLeftAndRightBounds();
-    private isUseScrollLag();
-    private debounce(callback);
     getBodyViewportScrollLeft(): number;
     setBodyViewportScrollLeft(value: number): void;
     horizontallyScrollHeaderCenterAndFloatingCenter(): void;
     private fakeVerticalScroll(position);
+    private setFakeScroll(eContainer, pixels);
     addScrollEventListener(listener: () => void): void;
     removeScrollEventListener(listener: () => void): void;
-}
-export interface TestKeyboardBindingGroupsResult {
-    trappedKeyboardBinding: KeyboardBinding;
-    trappedKeyboardBindingGroup: KeyboardBindingGroup;
 }

@@ -1,20 +1,17 @@
 
 import {BeanStub} from "../context/beanStub";
-import {IPaginationService} from "./pagination/serverPaginationService";
-import {IRowModel} from "../interfaces/iRowModel";
+import {IRowModel, RowBounds} from "../interfaces/iRowModel";
 import {EventService} from "../eventService";
-import {Events, ModelUpdatedEvent} from "../events";
+import {Events, ModelUpdatedEvent, PaginationChangedEvent} from "../events";
 import {RowNode} from "../entities/rowNode";
 import {_} from "../utils";
 import {Bean, Autowired, PostConstruct} from "../context/context";
 import {GridOptionsWrapper} from "../gridOptionsWrapper";
 import {GridPanel} from "../gridPanel/gridPanel";
 import {ScrollVisibleService} from "../gridPanel/scrollVisibleService";
-
-export class RowBounds {
-    rowTop: number;
-    rowHeight: number;
-}
+import {SelectionController} from "../selectionController";
+import {ColumnApi} from "../columnController/columnController";
+import {GridApi} from "../gridApi";
 
 @Bean('paginationAutoPageSizeService')
 export class PaginationAutoPageSizeService extends BeanStub {
@@ -61,12 +58,15 @@ export class PaginationAutoPageSizeService extends BeanStub {
 }
 
 @Bean('paginationProxy')
-export class PaginationProxy extends BeanStub implements IPaginationService, IRowModel {
+export class PaginationProxy extends BeanStub implements IRowModel {
 
     @Autowired('rowModel') private rowModel: IRowModel;
     @Autowired('gridPanel') private gridPanel: GridPanel;
     @Autowired('eventService') private eventService: EventService;
     @Autowired('gridOptionsWrapper') private gridOptionsWrapper: GridOptionsWrapper;
+    @Autowired('selectionController') private selectionController: SelectionController;
+    @Autowired('columnApi') private columnApi: ColumnApi;
+    @Autowired('gridApi') private gridApi: GridApi;
 
     private active: boolean;
 
@@ -90,25 +90,40 @@ export class PaginationProxy extends BeanStub implements IPaginationService, IRo
         this.addDestroyableEventListener(this.gridOptionsWrapper, 'paginationPageSize', this.onModelUpdated.bind(this));
 
         this.onModelUpdated();
-
-        let paginationStartPage = this.gridOptionsWrapper.getPaginationStartPage();
-        this.currentPage = paginationStartPage ? paginationStartPage : 0;
     }
 
     public isLastRowFound(): boolean {
         return this.rowModel.isLastRowFound();
     }
 
-    private onModelUpdated(refreshEvent?: ModelUpdatedEvent): void {
+    private onModelUpdated(modelUpdatedEvent?: ModelUpdatedEvent): void {
         this.setIndexesAndBounds();
-        this.eventService.dispatchEvent(Events.EVENT_PAGINATION_CHANGED, refreshEvent);
+        let paginationChangedEvent: PaginationChangedEvent = {
+            type: Events.EVENT_PAGINATION_CHANGED,
+            animate: modelUpdatedEvent ? modelUpdatedEvent.animate : false,
+            newData: modelUpdatedEvent ? modelUpdatedEvent.newData : false,
+            newPage: modelUpdatedEvent ? modelUpdatedEvent.newPage : false,
+            keepRenderedRows: modelUpdatedEvent ? modelUpdatedEvent.keepRenderedRows : false,
+            api: this.gridApi,
+            columnApi: this.columnApi
+        };
+        this.eventService.dispatchEvent(paginationChangedEvent);
     }
 
     public goToPage(page: number): void {
         if (!this.active) { return; }
         if (this.currentPage === page) { return; }
         this.currentPage = page;
-        this.onModelUpdated();
+        let event: ModelUpdatedEvent = {
+            type: Events.EVENT_MODEL_UPDATED,
+            animate: false,
+            keepRenderedRows: false,
+            newData: false,
+            newPage: true,
+            api: this.gridApi,
+            columnApi: this.columnApi
+        };
+        this.onModelUpdated(event);
     }
 
     public getPixelOffset(): number {
@@ -129,27 +144,11 @@ export class PaginationProxy extends BeanStub implements IPaginationService, IRo
     }
 
     public isRowPresent(rowNode: RowNode): boolean {
-        return this.isRowInPage(rowNode);
-    }
-
-    private isRowInPage(rowNode: RowNode): boolean {
         if (!this.rowModel.isRowPresent(rowNode)) {
             return false;
         }
         let nodeIsInPage = rowNode.rowIndex >= this.topRowIndex && rowNode.rowIndex <= this.bottomRowIndex;
         return nodeIsInPage;
-    }
-
-    public insertItemsAtIndex(index: number, items: any[], skipRefresh: boolean): void {
-        return this.rowModel.insertItemsAtIndex(index, items, skipRefresh);
-    }
-
-    public removeItems(rowNodes: RowNode[], skipRefresh: boolean): void {
-        this.rowModel.removeItems(rowNodes, skipRefresh);
-    }
-
-    public addItems(items: any[], skipRefresh: boolean): void {
-        this.rowModel.addItems(items, skipRefresh);
     }
 
     public isEmpty(): boolean {
@@ -158,6 +157,10 @@ export class PaginationProxy extends BeanStub implements IPaginationService, IRo
 
     public isRowsToRender(): boolean {
         return this.rowModel.isRowsToRender();
+    }
+
+    public getNodesInRangeForSelection(firstInRange: RowNode, lastInRange: RowNode): RowNode[] {
+        return this.rowModel.getNodesInRangeForSelection(firstInRange, lastInRange);
     }
 
     public forEachNode(callback: (rowNode: RowNode) => void): void {

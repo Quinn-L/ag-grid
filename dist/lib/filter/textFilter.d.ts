@@ -1,15 +1,36 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { IFilterParams, IDoesFilterPassParams, SerializedFilter } from "../interfaces/iFilter";
-import { ComparableBaseFilter } from "./baseFilter";
+import { ComparableBaseFilter, IScalarFilterParams } from "./baseFilter";
 export interface SerializedTextFilter extends SerializedFilter {
     filter: string;
     type: string;
 }
-export declare class TextFilter extends ComparableBaseFilter<string, IFilterParams, SerializedTextFilter> {
+export interface TextComparator {
+    (filter: string, gridValue: any, filterText: string): boolean;
+}
+export interface TextFormatter {
+    (from: string): string;
+}
+export interface INumberFilterParams extends IScalarFilterParams {
+    debounceMs?: number;
+}
+export interface ITextFilterParams extends IFilterParams {
+    textCustomComparator?: TextComparator;
+    debounceMs?: number;
+    caseSensitive?: boolean;
+}
+export declare class TextFilter extends ComparableBaseFilter<string, ITextFilterParams, SerializedTextFilter> {
     private eFilterTextField;
     private filterText;
+    private comparator;
+    private formatter;
+    static DEFAULT_FORMATTER: TextFormatter;
+    static DEFAULT_LOWERCASE_FORMATTER: TextFormatter;
+    static DEFAULT_COMPARATOR: TextComparator;
+    getDefaultType(): string;
+    customInit(): void;
     modelFromFloatingFilter(from: string): SerializedTextFilter;
     getApplicableFilterTypes(): string[];
     bodyTemplate(): string;

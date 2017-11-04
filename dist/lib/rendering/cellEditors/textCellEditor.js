@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -25,6 +25,7 @@ var TextCellEditor = (function (_super) {
         return _super.call(this, TextCellEditor.TEMPLATE) || this;
     }
     TextCellEditor.prototype.init = function (params) {
+        this.params = params;
         var eInput = this.getGui();
         var startValue;
         // cellStartedEdit is only false if we are doing fullRow editing
@@ -39,7 +40,7 @@ var TextCellEditor = (function (_super) {
                 startValue = params.charPress;
             }
             else {
-                startValue = params.value;
+                startValue = this.getStartValue(params);
                 if (params.keyPress !== constants_1.Constants.KEY_F2) {
                     this.highlightAllOnFocus = true;
                 }
@@ -47,15 +48,27 @@ var TextCellEditor = (function (_super) {
         }
         else {
             this.focusAfterAttached = false;
-            startValue = params.value;
+            startValue = this.getStartValue(params);
         }
         if (utils_1.Utils.exists(startValue)) {
             eInput.value = startValue;
         }
         this.addDestroyableEventListener(eInput, 'keydown', function (event) {
-            var isNavigationKey = event.keyCode === constants_1.Constants.KEY_LEFT || event.keyCode === constants_1.Constants.KEY_RIGHT;
+            var isNavigationKey = event.keyCode === constants_1.Constants.KEY_LEFT
+                || event.keyCode === constants_1.Constants.KEY_RIGHT
+                || event.keyCode === constants_1.Constants.KEY_UP
+                || event.keyCode === constants_1.Constants.KEY_DOWN
+                || event.keyCode === constants_1.Constants.KEY_PAGE_DOWN
+                || event.keyCode === constants_1.Constants.KEY_PAGE_UP
+                || event.keyCode === constants_1.Constants.KEY_PAGE_HOME
+                || event.keyCode === constants_1.Constants.KEY_PAGE_END;
             if (isNavigationKey) {
+                // this stops the grid from executing keyboard navigation
                 event.stopPropagation();
+                if (!(event.keyCode === constants_1.Constants.KEY_LEFT) && !(event.keyCode === constants_1.Constants.KEY_RIGHT)) {
+                    // this stops the browser from scrolling
+                    event.preventDefault();
+                }
             }
         });
     };
@@ -73,9 +86,9 @@ var TextCellEditor = (function (_super) {
             // this comes into play in two scenarios: a) when user hits F2 and b)
             // when user hits a printable character, then on IE (and only IE) the carot
             // was placed after the first character, thus 'apply' would end up as 'pplea'
-            var length = eInput.value ? eInput.value.length : 0;
-            if (length > 0) {
-                eInput.setSelectionRange(length, length);
+            var length_1 = eInput.value ? eInput.value.length : 0;
+            if (length_1 > 0) {
+                eInput.setSelectionRange(length_1, length_1);
             }
         }
     };
@@ -87,9 +100,13 @@ var TextCellEditor = (function (_super) {
     };
     TextCellEditor.prototype.getValue = function () {
         var eInput = this.getGui();
-        return eInput.value;
+        return this.params.parseValue(eInput.value);
     };
+    TextCellEditor.prototype.getStartValue = function (params) {
+        var formatValue = params.useFormatter || params.column.getColDef().refData;
+        return formatValue ? params.formatValue(params.value) : params.value;
+    };
+    TextCellEditor.TEMPLATE = '<input class="ag-cell-edit-input" type="text"/>';
     return TextCellEditor;
 }(component_1.Component));
-TextCellEditor.TEMPLATE = '<input class="ag-cell-edit-input" type="text"/>';
 exports.TextCellEditor = TextCellEditor;

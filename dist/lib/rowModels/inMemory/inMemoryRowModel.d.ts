@@ -1,18 +1,33 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { RowNode } from "../../entities/rowNode";
-import { IInMemoryRowModel } from "../../interfaces/iInMemoryRowModel";
+import { ChangedPath } from "./changedPath";
+import { RowBounds } from "../../interfaces/iRowModel";
 export interface RefreshModelParams {
     step: number;
     groupState?: any;
     keepRenderedRows?: boolean;
     animate?: boolean;
     keepEditingRows?: boolean;
-    newRowNodes?: RowNode[];
+    rowNodeTransaction?: RowNodeTransaction;
+    rowNodeOrder?: {
+        [id: string]: number;
+    };
     newData?: boolean;
 }
-export declare class InMemoryRowModel implements IInMemoryRowModel {
+export interface RowDataTransaction {
+    addIndex?: number;
+    add?: any[];
+    remove?: any[];
+    update?: any[];
+}
+export interface RowNodeTransaction {
+    add: RowNode[];
+    remove: RowNode[];
+    update: RowNode[];
+}
+export declare class InMemoryRowModel {
     private gridOptionsWrapper;
     private columnController;
     private filterManager;
@@ -20,6 +35,10 @@ export declare class InMemoryRowModel implements IInMemoryRowModel {
     private selectionController;
     private eventService;
     private context;
+    private valueService;
+    private valueCache;
+    private columnApi;
+    private gridApi;
     private filterStage;
     private sortStage;
     private flattenStage;
@@ -32,18 +51,17 @@ export declare class InMemoryRowModel implements IInMemoryRowModel {
     init(): void;
     isLastRowFound(): boolean;
     getRowCount(): number;
-    getRowBounds(index: number): {
-        rowTop: number;
-        rowHeight: number;
-    };
+    getRowBounds(index: number): RowBounds;
     private onRowGroupOpened();
     private onFilterChanged();
     private onSortChanged();
     getType(): string;
     private onValueChanged();
+    private createChangePath(transaction);
     refreshModel(params: RefreshModelParams): void;
     isEmpty(): boolean;
     isRowsToRender(): boolean;
+    getNodesInRangeForSelection(firstInRange: RowNode, lastInRange: RowNode): RowNode[];
     setDatasource(datasource: any): void;
     getTopLevelNodes(): RowNode[];
     getRootNode(): RowNode;
@@ -61,20 +79,23 @@ export declare class InMemoryRowModel implements IInMemoryRowModel {
     forEachNodeAfterFilterAndSort(callback: Function): void;
     forEachPivotNode(callback: Function): void;
     private recursivelyWalkNodesAndCallback(nodes, callback, recursionType, index);
-    doAggregate(): void;
+    doAggregate(changedPath?: ChangedPath): void;
     expandOrCollapseAll(expand: boolean): void;
     private doSort();
-    private doRowGrouping(groupState, newRowNodes);
+    private doRowGrouping(groupState, rowNodeTransaction, rowNodeOrder, changedPath);
     private restoreGroupState(groupState);
     private doFilter();
     private doPivot();
     private getGroupState();
-    setRowData(rowData: any[], refresh: boolean, firstId?: number): void;
+    getCopyOfNodesMap(): {
+        [id: string]: RowNode;
+    };
+    getRowNode(id: string): RowNode;
+    setRowData(rowData: any[]): void;
+    updateRowData(rowDataTran: RowDataTransaction, rowNodeOrder?: {
+        [id: string]: number;
+    }): RowNodeTransaction;
     private doRowsToDisplay();
-    insertItemsAtIndex(index: number, items: any[], skipRefresh: boolean): void;
     onRowHeightChanged(): void;
     resetRowHeights(): void;
-    removeItems(rowNodes: RowNode[], skipRefresh: boolean): void;
-    addItems(items: any[], skipRefresh: boolean): void;
-    private refreshAndFireEvent(eventName, rowNodes, groupState);
 }

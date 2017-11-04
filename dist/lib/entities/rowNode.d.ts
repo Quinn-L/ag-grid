@@ -1,8 +1,11 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
-import { ColDef } from "./colDef";
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
+import { AgEvent } from "../events";
 import { Column } from "./column";
+import { RowNodeCache, RowNodeCacheParams } from "../rowModels/cache/rowNodeCache";
+import { RowNodeBlock } from "../rowModels/cache/rowNodeBlock";
+import { IEventEmitter } from "../interfaces/iEventEmitter";
 export interface SetSelectedParams {
     newValue: boolean;
     clearSelection?: boolean;
@@ -10,17 +13,33 @@ export interface SetSelectedParams {
     rangeSelect?: boolean;
     groupSelectsFiltered?: boolean;
 }
-export declare class RowNode {
+export interface RowNodeEvent extends AgEvent {
+    node: RowNode;
+}
+export interface DataChangedEvent extends RowNodeEvent {
+    oldData: any;
+    newData: any;
+    update: boolean;
+}
+export interface CellChangedEvent extends RowNodeEvent {
+    column: Column;
+    newValue: any;
+}
+export declare class RowNode implements IEventEmitter {
     static EVENT_ROW_SELECTED: string;
     static EVENT_DATA_CHANGED: string;
     static EVENT_CELL_CHANGED: string;
+    static EVENT_ALL_CHILDREN_COUNT_CHANGED: string;
     static EVENT_MOUSE_ENTER: string;
     static EVENT_MOUSE_LEAVE: string;
     static EVENT_HEIGHT_CHANGED: string;
     static EVENT_TOP_CHANGED: string;
+    static EVENT_FIRST_CHILD_CHANGED: string;
+    static EVENT_LAST_CHILD_CHANGED: string;
+    static EVENT_CHILD_INDEX_CHANGED: string;
     static EVENT_ROW_INDEX_CHANGED: string;
     static EVENT_EXPANDED_CHANGED: string;
-    static EVENT_LOADING_CHANGED: string;
+    static EVENT_UI_LEVEL_CHANGED: string;
     private mainEventService;
     private gridOptionsWrapper;
     private selectionController;
@@ -28,15 +47,24 @@ export declare class RowNode {
     private valueService;
     private rowModel;
     private context;
+    private valueCache;
+    private columnApi;
+    private gridApi;
     /** Unique ID for the node. Either provided by the grid, or user can set to match the primary
      * key in the database (or whatever data source is used). */
     id: string;
+    /** The group data */
+    groupData: any;
+    /** The aggregated data */
+    aggData: any;
     /** The user provided data */
     data: any;
     /** The parent node to this node, or empty if top level */
     parent: RowNode;
     /** How many levels this node is from the top */
     level: number;
+    /** How many levels this node is from the top in the UI (different to the level when removing parents)*/
+    uiLevel: number;
     /** If doing in memory grouping, this is the index of the group column this cell is for.
      * This will always be the same as the level, unless we are collapsing groups ie groupRemoveSingleChildren = true */
     rowGroupIndex: number;
@@ -58,18 +86,20 @@ export declare class RowNode {
     childIndex: number;
     /** The index of this node in the grid, only valid if node is displayed in the grid, otherwise it should be ignored as old index may be present */
     rowIndex: number;
-    /** Either 'top' or 'bottom' if floating, otherwise undefined or null */
-    floating: string;
+    /** Either 'top' or 'bottom' if row pinned, otherwise undefined or null */
+    rowPinned: string;
     /** If using quick filter, stores a string representation of the row for searching against */
     quickFilterAggregateText: string;
     /** Groups only - True if row is a footer. Footers  have group = true and footer = true */
     footer: boolean;
     /** Groups only - The field we are grouping on eg Country*/
     field: string;
+    /** Groups only - the row group column for this group */
+    rowGroupColumn: Column;
     /** Groups only - The key for the group eg Ireland, UK, USA */
     key: any;
-    /** True if rowNode is loading, used by Enterprise row model */
-    loading: boolean;
+    /** Used by enterprise row model, true if this row node is a stub */
+    stub: boolean;
     /** All user provided nodes */
     allLeafChildren: RowNode[];
     /** Groups only - Children of this group */
@@ -84,6 +114,8 @@ export declare class RowNode {
     childrenMapped: {
         [key: string]: any;
     };
+    /** Enterprise Row Model Only - the children are in an infinite cache */
+    childrenCache: RowNodeCache<RowNodeBlock, RowNodeCacheParams>;
     /** Groups only - True if group is expanded, otherwise false */
     expanded: boolean;
     /** Groups only - If doing footers, reference to the footer node for this group */
@@ -100,20 +132,40 @@ export declare class RowNode {
      * representing a different entity, so the selection controller, if the node is selected, takes
      * a copy where daemon=true. */
     daemon: boolean;
+    /** Used by the value service, stores values for a particular change detection turn. */
+    __cacheData: {
+        [colId: string]: any;
+    };
+    __cacheVersion: number;
     private selected;
     private eventService;
     setData(data: any): void;
+    private createDataChangedEvent(newData, oldData, update);
+    private createLocalRowEvent(type);
+    updateData(data: any): void;
+    getRowIndexString(): string;
     private createDaemonNode();
     setDataAndId(data: any, id: string): void;
     setId(id: string): void;
-    setLoading(loading: boolean): void;
+    isPixelInRange(pixel: number): boolean;
     clearRowTop(): void;
+    setFirstChild(firstChild: boolean): void;
+    setLastChild(lastChild: boolean): void;
+    setChildIndex(childIndex: number): void;
     setRowTop(rowTop: number): void;
+    setAllChildrenCount(allChildrenCount: number): void;
     setRowHeight(rowHeight: number): void;
     setRowIndex(rowIndex: number): void;
+    setUiLevel(uiLevel: number): void;
     setExpanded(expanded: boolean): void;
-    private dispatchLocalEvent(eventName, event?);
-    setDataValue(colKey: string | ColDef | Column, newValue: any): void;
+    private createGlobalRowEvent(type);
+    private dispatchLocalEvent(event);
+    setDataValue(colKey: string | Column, newValue: any): void;
+    setGroupValue(colKey: string | Column, newValue: any): void;
+    setAggData(newAggData: any): void;
+    hasChildren(): boolean;
+    isEmptyFillerNode(): boolean;
+    private dispatchCellChangedEvent(column, newValue);
     resetQuickFilterAggregateText(): void;
     isExpandable(): boolean;
     isSelected(): boolean;
@@ -122,10 +174,10 @@ export declare class RowNode {
     private calculateSelectedFromChildrenBubbleUp();
     setSelectedInitialValue(selected: boolean): void;
     setSelected(newValue: boolean, clearSelection?: boolean, tailingNodeInSequence?: boolean): void;
-    isFloating(): boolean;
+    isRowPinned(): boolean;
     setSelectedParams(params: SetSelectedParams): number;
     private doRowRangeSelection();
-    private isParentOfNode(potentialParent);
+    isParentOfNode(potentialParent: RowNode): boolean;
     private calculatedSelectedForAllGroupNodes();
     selectThisNode(newValue: boolean): boolean;
     private selectChildNodes(newValue, groupSelectsFiltered);
@@ -133,4 +185,5 @@ export declare class RowNode {
     removeEventListener(eventType: string, listener: Function): void;
     onMouseEnter(): void;
     onMouseLeave(): void;
+    getFirstChildOfFirstChild(rowGroupColumn: Column): RowNode;
 }

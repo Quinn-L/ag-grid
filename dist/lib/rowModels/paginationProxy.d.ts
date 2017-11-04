@@ -1,14 +1,9 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { BeanStub } from "../context/beanStub";
-import { IPaginationService } from "./pagination/serverPaginationService";
 import { IRowModel } from "../interfaces/iRowModel";
 import { RowNode } from "../entities/rowNode";
-export declare class RowBounds {
-    rowTop: number;
-    rowHeight: number;
-}
 export declare class PaginationAutoPageSizeService extends BeanStub {
     private gridPanel;
     private eventService;
@@ -20,11 +15,14 @@ export declare class PaginationAutoPageSizeService extends BeanStub {
     private onBodyHeightChanged();
     private checkPageSize();
 }
-export declare class PaginationProxy extends BeanStub implements IPaginationService, IRowModel {
+export declare class PaginationProxy extends BeanStub implements IRowModel {
     private rowModel;
     private gridPanel;
     private eventService;
     private gridOptionsWrapper;
+    private selectionController;
+    private columnApi;
+    private gridApi;
     private active;
     private pageSize;
     private totalPages;
@@ -36,19 +34,16 @@ export declare class PaginationProxy extends BeanStub implements IPaginationServ
     private bottomRowBounds;
     private postConstruct();
     isLastRowFound(): boolean;
-    private onModelUpdated(refreshEvent?);
+    private onModelUpdated(modelUpdatedEvent?);
     goToPage(page: number): void;
     getPixelOffset(): number;
     getRow(index: number): RowNode;
     getRowIndexAtPixel(pixel: number): number;
     getCurrentPageHeight(): number;
     isRowPresent(rowNode: RowNode): boolean;
-    private isRowInPage(rowNode);
-    insertItemsAtIndex(index: number, items: any[], skipRefresh: boolean): void;
-    removeItems(rowNodes: RowNode[], skipRefresh: boolean): void;
-    addItems(items: any[], skipRefresh: boolean): void;
     isEmpty(): boolean;
     isRowsToRender(): boolean;
+    getNodesInRangeForSelection(firstInRange: RowNode, lastInRange: RowNode): RowNode[];
     forEachNode(callback: (rowNode: RowNode) => void): void;
     getType(): string;
     getRowBounds(index: number): {

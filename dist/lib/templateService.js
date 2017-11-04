@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -68,19 +68,19 @@ var TemplateService = (function () {
             callback();
         }
         if (this.$scope) {
-            var that = this;
+            var that_1 = this;
             setTimeout(function () {
-                that.$scope.$apply();
+                that_1.$scope.$apply();
             }, 0);
         }
     };
+    __decorate([
+        context_2.Autowired('$scope'),
+        __metadata("design:type", Object)
+    ], TemplateService.prototype, "$scope", void 0);
+    TemplateService = __decorate([
+        context_1.Bean('templateService')
+    ], TemplateService);
     return TemplateService;
 }());
-__decorate([
-    context_2.Autowired('$scope'),
-    __metadata("design:type", Object)
-], TemplateService.prototype, "$scope", void 0);
-TemplateService = __decorate([
-    context_1.Bean('templateService')
-], TemplateService);
 exports.TemplateService = TemplateService;

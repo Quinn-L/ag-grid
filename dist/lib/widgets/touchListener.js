@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -18,13 +18,13 @@ var TouchListener = (function () {
         var startListener = this.onTouchStart.bind(this);
         var moveListener = this.onTouchMove.bind(this);
         var endListener = this.onTouchEnd.bind(this);
-        this.eElement.addEventListener('touchstart', startListener);
-        this.eElement.addEventListener('touchmove', moveListener);
-        this.eElement.addEventListener('touchend', endListener);
+        this.eElement.addEventListener('touchstart', startListener, { passive: true });
+        this.eElement.addEventListener('touchmove', moveListener, { passive: true });
+        this.eElement.addEventListener('touchend', endListener, { passive: true });
         this.destroyFuncs.push(function () {
-            _this.eElement.addEventListener('touchstart', startListener);
-            _this.eElement.addEventListener('touchmove', moveListener);
-            _this.eElement.addEventListener('touchend', endListener);
+            _this.eElement.addEventListener('touchstart', startListener, { passive: true });
+            _this.eElement.addEventListener('touchmove', moveListener, { passive: true });
+            _this.eElement.addEventListener('touchend', endListener, { passive: true });
         });
     }
     TouchListener.prototype.getActiveTouch = function (touchList) {
@@ -56,7 +56,11 @@ var TouchListener = (function () {
             var touchesMatch = _this.touchStart === touchStartCopy;
             if (_this.touching && touchesMatch && !_this.moved) {
                 _this.moved = true;
-                _this.eventService.dispatchEvent(TouchListener.EVENT_LONG_TAP, _this.touchStart);
+                var event_1 = {
+                    type: TouchListener.EVENT_LONG_TAP,
+                    touchStart: _this.touchStart
+                };
+                _this.eventService.dispatchEvent(event_1);
             }
         }, 500);
     };
@@ -78,16 +82,20 @@ var TouchListener = (function () {
             return;
         }
         if (!this.moved) {
-            this.eventService.dispatchEvent(TouchListener.EVENT_TAP, this.touchStart);
+            var event_2 = {
+                type: TouchListener.EVENT_TAP,
+                touchStart: this.touchStart
+            };
+            this.eventService.dispatchEvent(event_2);
         }
         this.touching = false;
     };
     TouchListener.prototype.destroy = function () {
         this.destroyFuncs.forEach(function (func) { return func(); });
     };
+    // private mostRecentTouch: Touch;
+    TouchListener.EVENT_TAP = 'tap';
+    TouchListener.EVENT_LONG_TAP = 'longTap';
     return TouchListener;
 }());
-// private mostRecentTouch: Touch;
-TouchListener.EVENT_TAP = 'tap';
-TouchListener.EVENT_LONG_TAP = 'longTap';
 exports.TouchListener = TouchListener;

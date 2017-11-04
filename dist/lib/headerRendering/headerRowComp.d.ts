@@ -1,6 +1,6 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { Component } from "../widgets/component";
 import { DropTarget } from "../dragAndDrop/dragAndDropService";
 import { IComponent } from "../interfaces/iComponent";
@@ -15,10 +15,10 @@ export declare class HeaderRowComp extends Component {
     private context;
     private eventService;
     private filterManager;
-    private componentProvider;
+    private componentRecipes;
     private dept;
     private pinned;
-    private headerElements;
+    private headerCompPromises;
     private eRoot;
     private dropTarget;
     private type;
@@ -34,8 +34,9 @@ export declare class HeaderRowComp extends Component {
     private removeAndDestroyAllChildComponents();
     private onDisplayedColumnsChanged();
     private onVirtualColumnsChanged();
+    private warnedUserOnOldHeaderTemplate;
     private isUsingOldHeaderRenderer(column);
-    private createHeaderElement(columnGroupChild);
+    private createHeaderComp(columnGroupChild);
     private createFloatingFilterWrapper(column);
     private createFloatingFilterParams<M, F>(column);
 }

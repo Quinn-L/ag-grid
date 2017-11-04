@@ -1,12 +1,13 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { IAggFunc } from "../entities/colDef";
+import { Column } from "../entities/column";
 export interface IAggFuncService {
     addAggFuncs(aggFuncs: {
         [key: string]: IAggFunc;
     }): void;
     addAggFunc(key: string, aggFunc: IAggFunc): void;
     clear(): void;
-    getDefaultAggFunc(): string;
+    getDefaultAggFunc(column: Column): string;
 }

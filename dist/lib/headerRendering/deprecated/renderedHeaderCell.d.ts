@@ -1,6 +1,6 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { Column } from "../../entities/column";
 import { DropTarget } from "../../dragAndDrop/dragAndDropService";
 import { Component } from "../../widgets/component";
@@ -17,6 +17,7 @@ export declare class RenderedHeaderCell extends Component {
     private dragAndDropService;
     private sortController;
     private $scope;
+    private beans;
     private eRoot;
     private column;
     private childScope;
@@ -44,6 +45,7 @@ export declare class RenderedHeaderCell extends Component {
     private setupMovingCss();
     private onColumnMovingChanged();
     private setupMove(eHeaderCellLabel);
+    private createDragItem();
     private setupTap();
     private setupResize();
     private useRenderer(headerNameValue, headerCellRenderer, eText);

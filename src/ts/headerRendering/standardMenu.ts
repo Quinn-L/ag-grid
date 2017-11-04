@@ -1,6 +1,6 @@
 import {Bean, Autowired} from "../context/context";
 import {IMenuFactory} from "../interfaces/iMenuFactory";
-import {FilterManager} from "../filter/filterManager";
+import {FilterManager, FilterWrapper} from "../filter/filterManager";
 import {Column} from "../entities/column";
 import {Utils as _} from "../utils";
 import {PopupService} from "../widgets/popupService";
@@ -23,6 +23,8 @@ export class StandardMenuFactory implements IMenuFactory {
     public showMenuAfterMouseEvent(column:Column, mouseEvent:MouseEvent|Touch): void {
         this.showPopup(column, (eMenu: HTMLElement) => {
             this.popupService.positionPopupUnderMouseEvent({
+                column: column,
+                type: 'columnMenu',
                 mouseEvent: mouseEvent,
                 ePopup: eMenu
             });
@@ -31,20 +33,24 @@ export class StandardMenuFactory implements IMenuFactory {
 
     public showMenuAfterButtonClick(column: Column, eventSource: HTMLElement): void {
         this.showPopup(column, (eMenu: HTMLElement) => {
-            this.popupService.positionPopupUnderComponent({eventSource: eventSource, ePopup: eMenu, keepWithinBounds: true});
+            this.popupService.positionPopupUnderComponent(
+                {type: 'columnMenu', eventSource: eventSource,
+                    ePopup: eMenu, keepWithinBounds: true, column: column});
         });
     }
 
     public showPopup(column: Column,  positionCallback: (eMenu: HTMLElement)=>void): void {
-        var filterWrapper = this.filterManager.getOrCreateFilterWrapper(column);
+        let filterWrapper:FilterWrapper = this.filterManager.getOrCreateFilterWrapper(column);
 
-        var eMenu = document.createElement('div');
+        let eMenu = document.createElement('div');
         _.addCssClass(eMenu, 'ag-menu');
-        eMenu.appendChild(filterWrapper.gui);
+        filterWrapper.guiPromise.promise.then(gui=>{
+            eMenu.appendChild(gui)
+        });
 
-        var hidePopup: (event?: any)=>void;
+        let hidePopup: () => void;
 
-        var bodyScrollListener = (event: any) => {
+        let bodyScrollListener = (event: any) => {
             // if h scroll, popup is no longer over the column
             if (event.direction==='horizontal') {
                 hidePopup();
@@ -52,8 +58,9 @@ export class StandardMenuFactory implements IMenuFactory {
         };
 
         this.eventService.addEventListener('bodyScroll', bodyScrollListener);
-        var closedCallback = ()=> {
+        let closedCallback = ()=> {
             this.eventService.removeEventListener('bodyScroll', bodyScrollListener);
+            column.setMenuVisible(false);
         };
 
         // need to show filter before positioning, as only after filter
@@ -61,12 +68,16 @@ export class StandardMenuFactory implements IMenuFactory {
         hidePopup = this.popupService.addAsModalPopup(eMenu, true, closedCallback);
         positionCallback(eMenu);
 
-        if (filterWrapper.filter.afterGuiAttached) {
-            var params: IAfterGuiAttachedParams = {
-                hidePopup: hidePopup
-            };
-            filterWrapper.filter.afterGuiAttached(params);
-        }
+        filterWrapper.filterPromise.then(filter=>{
+            if (filter.afterGuiAttached) {
+                let params: IAfterGuiAttachedParams = {
+                    hidePopup: hidePopup
+                };
+                filter.afterGuiAttached(params);
+            }
+        });
+
+        column.setMenuVisible(true);
     }
 
     public isMenuEnabled(column: Column): boolean {

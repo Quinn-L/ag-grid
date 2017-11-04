@@ -1,12 +1,13 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { Column } from "./entities/column";
 import { ColumnController } from "./columnController/columnController";
 import { RowNode } from "./entities/rowNode";
-import { ValueService } from "./valueService";
+import { ValueService } from "./valueService/valueService";
 import { GridOptionsWrapper } from "./gridOptionsWrapper";
-import { CsvExportParams, ProcessCellForExportParams, ProcessHeaderForExportParams } from "./exportParams";
+import { ExportParams, ProcessCellForExportParams, ProcessHeaderForExportParams } from "./exportParams";
+import { ColumnGroupChild } from "./entities/columnGroupChild";
 /**
  * This interface works in conjuction with the GridSerializer. When serializing a grid, an instance that implements this interface
  * must be passed in, the serializer will call back to the provided methods and finally call to parse to obtain the final result
@@ -31,7 +32,7 @@ import { CsvExportParams, ProcessCellForExportParams, ProcessHeaderForExportPara
  * to be created a new instances of RowAccumulator or RowSpanningAccumulator need to be provided.
 
  */
-export interface GridSerializingSession {
+export interface GridSerializingSession<T> {
     /**
      * INITIAL METHOD
      */
@@ -39,11 +40,11 @@ export interface GridSerializingSession {
     /**
      * ROW METHODS
      */
-    addCustomHeader(customHeader: string): void;
+    addCustomHeader(customHeader: T): void;
     onNewHeaderGroupingRow(): RowSpanningAccumulator;
     onNewHeaderRow(): RowAccumulator;
     onNewBodyRow(): RowAccumulator;
-    addCustomFooter(customFooter: string): void;
+    addCustomFooter(customFooter: T): void;
     /**
      * FINAL RESULT
      */
@@ -55,7 +56,7 @@ export interface RowAccumulator {
 export interface RowSpanningAccumulator {
     onColumn(header: string, index: number, span: number): void;
 }
-export declare abstract class BaseGridSerializingSession implements GridSerializingSession {
+export declare abstract class BaseGridSerializingSession<T> implements GridSerializingSession<T> {
     columnController: ColumnController;
     valueService: ValueService;
     gridOptionsWrapper: GridOptionsWrapper;
@@ -64,27 +65,29 @@ export declare abstract class BaseGridSerializingSession implements GridSerializ
     cellAndHeaderEscaper: (rawValue: string) => string;
     constructor(columnController: ColumnController, valueService: ValueService, gridOptionsWrapper: GridOptionsWrapper, processCellCallback?: (params: ProcessCellForExportParams) => string, processHeaderCallback?: (params: ProcessHeaderForExportParams) => string, cellAndHeaderEscaper?: (rawValue: string) => string);
     abstract prepare(columnsToExport: Column[]): void;
-    abstract addCustomHeader(customHeader: string): void;
-    abstract addCustomFooter(customFooter: string): void;
+    abstract addCustomHeader(customHeader: T): void;
+    abstract addCustomFooter(customFooter: T): void;
     abstract onNewHeaderGroupingRow(): RowSpanningAccumulator;
     abstract onNewHeaderRow(): RowAccumulator;
     abstract onNewBodyRow(): RowAccumulator;
     abstract parse(): string;
     extractHeaderValue(column: Column): string;
-    extractRowCellValue(column: Column, index: number, node?: RowNode): any;
+    extractRowCellValue(column: Column, index: number, type: string, node?: RowNode): any;
     private getHeaderName(callback, column);
     private createValueForGroupNode(node);
-    private processCell(rowNode, column, value, processCellCallback);
+    private processCell(rowNode, column, value, processCellCallback, type);
 }
 export declare class GridSerializer {
     private displayedGroupCreator;
     private columnController;
     private rowModel;
-    private floatingRowModel;
+    private pinnedRowModel;
     private selectionController;
     private balancedColumnTreeBuilder;
     private gridOptionsWrapper;
-    serialize(gridSerializingSession: GridSerializingSession, userParams?: CsvExportParams): string;
+    serialize<T>(gridSerializingSession: GridSerializingSession<T>, params?: ExportParams<T>): string;
+    recursivelyAddHeaderGroups<T>(displayedGroups: ColumnGroupChild[], gridSerializingSession: GridSerializingSession<T>): void;
+    private doAddHeaderHeader<T>(gridSerializingSession, displayedGroups);
 }
 export declare enum RowType {
     HEADER_GROUPING = 0,

@@ -1,24 +1,31 @@
-
-import {SvgFactory} from "../../svgFactory";
 import {GridOptionsWrapper} from "../../gridOptionsWrapper";
-import {ExpressionService} from "../../expressionService";
+import {ExpressionService} from "../../valueService/expressionService";
 import {EventService} from "../../eventService";
 import {Constants} from "../../constants";
 import {Utils as _} from "../../utils";
-import {Events} from "../../events";
 import {Autowired, Context} from "../../context/context";
 import {Component} from "../../widgets/component";
-import {ICellRenderer} from "./iCellRenderer";
+import {ICellRenderer, ICellRendererParams} from "./iCellRenderer";
 import {RowNode} from "../../entities/rowNode";
-import {GridApi} from "../../gridApi";
 import {CellRendererService} from "../cellRendererService";
 import {ValueFormatterService} from "../valueFormatterService";
 import {CheckboxSelectionComponent} from "../checkboxSelectionComponent";
 import {ColumnController} from "../../columnController/columnController";
 import {Column} from "../../entities/column";
-import {QuerySelector, RefSelector} from "../../widgets/componentAnnotations";
+import {RefSelector} from "../../widgets/componentAnnotations";
+import {MouseEventService} from "../../gridPanel/mouseEventService";
 
-var svgFactory = SvgFactory.getInstance();
+export interface GroupCellRendererParams extends ICellRendererParams{
+    pinned:string,
+    padding:number,
+    suppressPadding:boolean,
+    footerValueGetter:any,
+    suppressCount:boolean,
+    fullWidth:boolean,
+    checkbox:any,
+    scope:any,
+    actualValue:string
+}
 
 export class GroupCellRenderer extends Component implements ICellRenderer {
 
@@ -26,7 +33,6 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
         '<span>' +
          '<span class="ag-group-expanded" ref="eExpanded"></span>' +
          '<span class="ag-group-contracted" ref="eContracted"></span>' +
-         '<span class="ag-group-loading" ref="eLoading"></span>' +
          '<span class="ag-group-checkbox" ref="eCheckbox"></span>' +
          '<span class="ag-group-value" ref="eValue"></span>' +
          '<span class="ag-group-child-count" ref="eChildCount"></span>' +
@@ -39,106 +45,54 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
     @Autowired('valueFormatterService') private valueFormatterService: ValueFormatterService;
     @Autowired('context') private context: Context;
     @Autowired('columnController') private columnController: ColumnController;
+    @Autowired('mouseEventService') private mouseEventService: MouseEventService;
 
     @RefSelector('eExpanded') private eExpanded: HTMLElement;
     @RefSelector('eContracted') private eContracted: HTMLElement;
-    @RefSelector('eLoading') private eLoading: HTMLElement;
     @RefSelector('eCheckbox') private eCheckbox: HTMLElement;
     @RefSelector('eValue') private eValue: HTMLElement;
     @RefSelector('eChildCount') private eChildCount: HTMLElement;
 
-    private params: any;
-    private nodeWasSwapped: boolean;
+    private params: GroupCellRendererParams;
+
+    // will be true if the node was pulled down
+    private draggedFromHideOpenParents: boolean;
+
+    // this is normally the rowNode of this row, however when doing hideOpenParents, it will
+    // be the parent who's details we are actually showing if the data was pulled down.
+    private displayedGroup: RowNode;
+
+    private cellIsBlank: boolean;
 
     constructor() {
         super(GroupCellRenderer.TEMPLATE);
     }
 
-    public init(params: any): void {
+    public init(params: GroupCellRendererParams): void {
 
-        this.setParams(params);
+        this.params = params;
 
-        let groupKeyMismatch = this.isGroupKeyMismatch();
-        let embeddedRowMismatch = this.embeddedRowMismatch();
-        if (groupKeyMismatch || embeddedRowMismatch) { return; }
+        let embeddedRowMismatch = this.isEmbeddedRowMismatch();
+        // This allows for empty strings to appear as groups since
+        // it will only return for null or undefined.
+        let cellIsEmpty = params.value==null;
 
-        this.setupComponents();
-    }
+        this.cellIsBlank = embeddedRowMismatch || cellIsEmpty;
 
-    private setParams(params: any): void {
-        if (this.gridOptionsWrapper.isGroupHideOpenParents()) {
-            let nodeToSwapIn = this.isFirstChildOfFirstChild(params.node, params.colDef.field);
-            this.nodeWasSwapped = _.exists(nodeToSwapIn);
-            if (this.nodeWasSwapped) {
-                let newParams = <any> {};
-                _.assign(newParams, params);
-                newParams.node = nodeToSwapIn;
-                this.params = newParams;
-            } else {
-                this.params = params;
-            }
-        } else {
-            this.nodeWasSwapped = false;
-            this.params = params;
-        }
-    }
+        if (this.cellIsBlank) { return; }
 
-    private setupComponents(): void {
+        this.setupDragOpenParents();
+
         this.addExpandAndContract();
         this.addCheckboxIfNeeded();
         this.addValueElement();
         this.addPadding();
     }
 
-    private isFirstChildOfFirstChild(rowNode: RowNode, groupField: string): RowNode {
-        let currentRowNode = rowNode;
-
-        // if we are hiding groups, then if we are the first child, of the first child,
-        // all the way up to the column we are interested in, then we show the group cell.
-
-        let isCandidate = true;
-        let foundFirstChildPath = false;
-        let nodeToSwapIn: RowNode;
-
-        while (isCandidate && !foundFirstChildPath) {
-
-            let parentRowNode = currentRowNode.parent;
-            let firstChild = _.exists(parentRowNode) && currentRowNode.childIndex === 0;
-
-            if (firstChild) {
-                if (parentRowNode.field === groupField) {
-                    foundFirstChildPath = true;
-                    nodeToSwapIn = parentRowNode;
-                }
-            } else {
-                isCandidate = false;
-            }
-
-            currentRowNode = parentRowNode;
-        }
-
-        return foundFirstChildPath ? nodeToSwapIn : null;
-    }
-
-    private isGroupKeyMismatch(): boolean {
-        // if the user only wants to show details for one group in this column,
-        // then the group key here says which column we are interested in.
-
-        let restrictToOneGroup = this.params.restrictToOneGroup;
-
-        let skipCheck = this.nodeWasSwapped || !restrictToOneGroup;
-        if (skipCheck) { return false; }
-
-        let groupField = this.params.colDef.field;
-        let rowNode = this.params.node;
-
-        return groupField !== rowNode.field;
-    }
-
     // if we are doing embedded full width rows, we only show the renderer when
     // in the body, or if pinning in the pinned section, or if pinning and RTL,
     // in the right section. otherwise we would have the cell repeated in each section.
-    private embeddedRowMismatch(): boolean {
+    private isEmbeddedRowMismatch(): boolean {
         if (this.gridOptionsWrapper.isEmbedFullWidthRows()) {
 
             let pinnedLeftCell = this.params.pinned === Column.PINNED_LEFT;
@@ -163,70 +117,79 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
         }
     }
 
-    private addPadding(): void {
+    private setPadding(): void {
+
+        if (this.gridOptionsWrapper.isGroupHideOpenParents()) { return; }
+
         let params = this.params;
+        let rowNode: RowNode = params.node;
+
+        let paddingPx: number;
+
+        // never any padding on top level nodes
+        if (rowNode.uiLevel<=0) {
+            paddingPx = 0;
+        } else {
+            let paddingFactor: number = (params.padding >= 0) ? params.padding : this.gridOptionsWrapper.getGroupPaddingSize();
+            paddingPx = rowNode.uiLevel * paddingFactor;
+
+            let reducedLeafNode = this.columnController.isPivotMode() && params.node.leafGroup;
+            if (rowNode.footer) {
+                paddingPx += this.gridOptionsWrapper.getFooterPaddingAddition();
+            } else if (!rowNode.isExpandable() || reducedLeafNode) {
+                paddingPx += this.gridOptionsWrapper.getLeafNodePaddingAddition();
+            }
+        }
+
+        if (this.gridOptionsWrapper.isEnableRtl()) {
+            // if doing rtl, padding is on the right
+            this.getGui().style.paddingRight = paddingPx + 'px';
+        } else {
+            // otherwise it is on the left
+            this.getGui().style.paddingLeft = paddingPx + 'px';
+        }
+    }
+
+    private addPadding(): void {
+
         // only do this if an indent - as this overwrites the padding that
         // the theme set, which will make things look 'not aligned' for the
         // first group level.
-        var node = params.node;
-        var suppressPadding = params.suppressPadding;
-        if (!suppressPadding && (node.footer || node.level > 0)) {
-            var paddingFactor: any;
-            if (params.colDef && params.padding >= 0) {
-                paddingFactor = params.padding;
-            } else {
-                paddingFactor = 10;
-            }
-            var paddingPx = node.level * paddingFactor;
-            var reducedLeafNode = this.columnController.isPivotMode() && params.node.leafGroup;
-            if (node.footer) {
-                paddingPx += 15;
-            } else if (!node.isExpandable() || reducedLeafNode) {
-                paddingPx += 10;
-            }
+        let node: RowNode = this.params.node;
+        let suppressPadding = this.params.suppressPadding;
 
-            if (this.gridOptionsWrapper.isEnableRtl()) {
-                // if doing rtl, padding is on the right
-                this.getGui().style.paddingRight = paddingPx + 'px';
-            } else {
-                // otherwise it is on the left
-                this.getGui().style.paddingLeft = paddingPx + 'px';
-            }
+        if (!suppressPadding) {
+            this.addDestroyableEventListener(node, RowNode.EVENT_UI_LEVEL_CHANGED, this.setPadding.bind(this));
+            this.setPadding();
         }
     }
 
     private addValueElement(): void {
         let params = this.params;
-        let rowNode = this.params.node;
-        if (params.innerRenderer) {
-            this.createFromInnerRenderer();
-        } else if (rowNode.footer) {
+        let rowNode = this.displayedGroup;
+        if (rowNode.footer) {
             this.createFooterCell();
-        } else if (rowNode.group) {
+        } else if (
+            rowNode.hasChildren() ||
+            _.get(params.colDef, 'cellRendererParams.innerRenderer', null) ||
+            _.get(params.colDef, 'cellRendererParams.innerRendererFramework', null)
+        ) {
             this.createGroupCell();
-            this.addChildCount();
+            if (rowNode.hasChildren()){
+                this.addChildCount();
+            }
         } else {
             this.createLeafCell();
         }
     }
 
-    private createFromInnerRenderer(): void {
-        let innerComponent = this.cellRendererService.useCellRenderer(this.params.innerRenderer, this.eValue, this.params);
-        this.addDestroyFunc( ()=> {
-            if (innerComponent && innerComponent.destroy) {
-                innerComponent.destroy();
-            }
-        });
-    }
-
     private createFooterCell(): void {
         let footerValue: string;
-        let groupName = this.getGroupName();
         let footerValueGetter = this.params.footerValueGetter;
         if (footerValueGetter) {
             // params is same as we were given, except we set the value as the item to display
             let paramsClone: any = _.cloneObject(this.params);
-            paramsClone.value = groupName;
+            paramsClone.value = this.params.value;
             if (typeof footerValueGetter === 'function') {
                 footerValue = footerValueGetter(paramsClone);
             } else if (typeof footerValueGetter === 'string') {
@@ -235,7 +198,7 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
                 console.warn('ag-Grid: footerValueGetter should be either a function or a string (expression)');
             }
         } else {
-            footerValue = 'Total ' + groupName;
+            footerValue = 'Total ' + this.params.value;
         }
 
         this.eValue.innerHTML = footerValue;
@@ -243,38 +206,20 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
 
     private createGroupCell(): void {
         let params = this.params;
-        // pull out the column that the grouping is on
-        var rowGroupColumns = this.params.columnApi.getRowGroupColumns();
+        let rowGroupColumn = this.displayedGroup.rowGroupColumn;
 
-        // if we are using in memory grid grouping, then we try to look up the column that
-        // we did the grouping on. however if it is not possible (happens when user provides
-        // the data already grouped) then we just the current col, ie use cellRenderer of current col
-        var columnOfGroupedCol = rowGroupColumns[params.node.rowGroupIndex];
-        if (_.missing(columnOfGroupedCol)) {
-            columnOfGroupedCol = params.column;
-        }
-        var colDefOfGroupedCol = columnOfGroupedCol.getColDef();
+        // we try and use the cellRenderer of the column used for the grouping if we can
+        let columnToUse: Column = rowGroupColumn ? rowGroupColumn : params.column;
 
-        var groupName = this.getGroupName();
-        var valueFormatted = this.valueFormatterService.formatValue(columnOfGroupedCol, params.node, params.scope, params.rowIndex, groupName);
+        let groupName = this.params.value;
+        let valueFormatted = columnToUse ?
+            this.valueFormatterService.formatValue(columnToUse, params.node, params.scope, groupName) : null;
 
-        // reuse the params but change the value
-        if (colDefOfGroupedCol && typeof colDefOfGroupedCol.cellRenderer === 'function') {
-            // reuse the params but change the value
-            params.value = groupName;
-            params.valueFormatted = valueFormatted;
-
-            // because we are talking about the different column to the original, any user provided params
-            // are for the wrong column, so need to copy them in again.
-            if (colDefOfGroupedCol.cellRendererParams) {
-                _.assign(params, colDefOfGroupedCol.cellRendererParams);
-            }
-            this.cellRendererService.useCellRenderer(colDefOfGroupedCol.cellRenderer, this.eValue, params);
+        params.valueFormatted = valueFormatted;
+        if (params.fullWidth == true) {
+            this.cellRendererService.useFullWidthGroupRowInnerCellRenderer(this.eValue, params);
         } else {
-            var valueToRender = _.exists(valueFormatted) ? valueFormatted : groupName;
-            if (_.exists(valueToRender) && valueToRender !== '') {
-                this.eValue.appendChild(document.createTextNode(valueToRender));
-            }
+            this.cellRendererService.useInnerCellRenderer(this.params.colDef.cellRendererParams, columnToUse.getColDef(), this.eValue, params);
         }
     }
 
@@ -284,31 +229,15 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
         // then this could be left out, or set to -1, ie no child count
         if (this.params.suppressCount) { return; }
 
-        this.addDestroyableEventListener(this.eventService, Events.EVENT_AFTER_FILTER_CHANGED, this.updateChildCount.bind(this));
+        this.addDestroyableEventListener(this.displayedGroup, RowNode.EVENT_ALL_CHILDREN_COUNT_CHANGED, this.updateChildCount.bind(this));
 
         // filtering changes the child count, so need to cater for it
         this.updateChildCount();
     }
 
     private updateChildCount(): void {
-        let allChildrenCount = this.params.node.allChildrenCount;
-        let text = allChildrenCount >= 0 ? `(${allChildrenCount})` : '';
-        this.eChildCount.innerHTML = text;
-    }
-
-    private getGroupName(): string {
-        let keyMap = this.params.keyMap;
-        let rowNodeKey = this.params.node.key;
-        if (keyMap && typeof keyMap === 'object') {
-            var valueFromMap = keyMap[rowNodeKey];
-            if (valueFromMap) {
-                return valueFromMap;
-            } else {
-                return rowNodeKey;
-            }
-        } else {
-            return rowNodeKey;
-        }
+        let allChildrenCount = this.displayedGroup.allChildrenCount;
+        this.eChildCount.innerHTML = allChildrenCount >= 0 ? `(${allChildrenCount})` : ``;
     }
 
     private createLeafCell(): void {
@@ -328,17 +257,17 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
 
     private addCheckboxIfNeeded(): void {
         let rowNode = this.params.node;
-        var checkboxNeeded = this.isUserWantsSelected()
+        let checkboxNeeded = this.isUserWantsSelected()
                 // footers cannot be selected
                 && !rowNode.footer
-                // floating rows cannot be selected
-                && !rowNode.floating
+                // pinned rows cannot be selected
+                && !rowNode.rowPinned
                 // flowers cannot be selected
                 && !rowNode.flower;
         if (checkboxNeeded) {
-            var cbSelectionComponent = new CheckboxSelectionComponent();
+            let cbSelectionComponent = new CheckboxSelectionComponent();
             this.context.wireBean(cbSelectionComponent);
-            cbSelectionComponent.init({rowNode: rowNode});
+            cbSelectionComponent.init({rowNode: rowNode, column: this.params.column});
             this.eCheckbox.appendChild(cbSelectionComponent.getGui());
             this.addDestroyFunc( ()=> cbSelectionComponent.destroy() );
         }
@@ -346,64 +275,135 @@ export class GroupCellRenderer extends Component implements ICellRenderer {
 
     private addExpandAndContract(): void {
         let params = this.params;
-        let eGroupCell: HTMLElement = params.eGridCell;
-        let eExpandedIcon = _.createIconNoSpan('groupExpanded', this.gridOptionsWrapper, null, svgFactory.createGroupContractedIcon);
-        let eContractedIcon = _.createIconNoSpan('groupContracted', this.gridOptionsWrapper, null, svgFactory.createGroupExpandedIcon);
-        let eLoadingIcon = _.createIconNoSpan('groupLoading', this.gridOptionsWrapper, null, svgFactory.createGroupLoadingIcon);
+        let eGroupCell = params.eGridCell;
+        let eExpandedIcon = _.createIconNoSpan('groupExpanded', this.gridOptionsWrapper, null);
+        let eContractedIcon = _.createIconNoSpan('groupContracted', this.gridOptionsWrapper, null);
         this.eExpanded.appendChild(eExpandedIcon);
         this.eContracted.appendChild(eContractedIcon);
-        this.eLoading.appendChild(eLoadingIcon);
 
-        let expandOrContractListener = this.onExpandOrContract.bind(this);
-        this.addDestroyableEventListener(this.eExpanded, 'click', expandOrContractListener);
-        this.addDestroyableEventListener(this.eContracted, 'click', expandOrContractListener);
-        this.addDestroyableEventListener(this.eLoading, 'click', expandOrContractListener);
-
-        // if editing groups, then double click is to start editing
-        if (!this.gridOptionsWrapper.isEnableGroupEdit()) {
-            this.addDestroyableEventListener(eGroupCell, 'dblclick', expandOrContractListener);
-        }
+        this.addDestroyableEventListener(this.eExpanded, 'click', this.onExpandClicked.bind(this));
+        this.addDestroyableEventListener(this.eContracted, 'click', this.onExpandClicked.bind(this));
 
         // expand / contract as the user hits enter
         this.addDestroyableEventListener(eGroupCell, 'keydown', this.onKeyDown.bind(this));
         this.addDestroyableEventListener(params.node, RowNode.EVENT_EXPANDED_CHANGED, this.showExpandAndContractIcons.bind(this));
-        this.addDestroyableEventListener(params.node, RowNode.EVENT_LOADING_CHANGED, this.showExpandAndContractIcons.bind(this));
         this.showExpandAndContractIcons();
+
+        // because we don't show the expand / contract when there are no children, we need to check every time
+        // the number of children change.
+        this.addDestroyableEventListener(this.displayedGroup, RowNode.EVENT_ALL_CHILDREN_COUNT_CHANGED,
+            this.showExpandAndContractIcons.bind(this));
+
+        // if editing groups, then double click is to start editing
+        if (!this.gridOptionsWrapper.isEnableGroupEdit() && this.isExpandable()) {
+            this.addDestroyableEventListener(eGroupCell, 'dblclick', this.onCellDblClicked.bind(this));
+        }
     }
 
     private onKeyDown(event: KeyboardEvent): void {
         if (_.isKeyPressed(event, Constants.KEY_ENTER)) {
-            this.onExpandOrContract();
+            let cellEditable = this.params.column.isCellEditable(this.params.node);
+            if (cellEditable) {
+                return;
+            }
             event.preventDefault();
+            this.onExpandOrContract();
+        }
+    }
+
+    private setupDragOpenParents(): void {
+
+        let column = this.params.column;
+        let rowNode: RowNode = this.params.node;
+
+        if (!this.gridOptionsWrapper.isGroupHideOpenParents()) {
+            this.draggedFromHideOpenParents = false;
+        } else if (!rowNode.hasChildren()) {
+            // if we are here, and we are not a group, then we must of been dragged down,
+            // as otherwise the cell would be blank, and if cell is blank, this method is never called.
+            this.draggedFromHideOpenParents = true;
+        } else {
+            let rowGroupColumn = rowNode.rowGroupColumn;
+            // if the displayGroup column for this col matches the rowGroupColumn we grouped by for this node,
+            // then nothing was dragged down
+            this.draggedFromHideOpenParents = !column.isRowGroupDisplayed(rowGroupColumn.getId());
+        }
+
+        if (this.draggedFromHideOpenParents) {
+            let pointer = rowNode.parent;
+            while (true) {
+                if (_.missing(pointer)) {
+                    break;
+                }
+                if (pointer.rowGroupColumn && column.isRowGroupDisplayed(pointer.rowGroupColumn.getId())) {
+                    this.displayedGroup = pointer;
+                    break;
+                }
+                pointer = pointer.parent;
+            }
+        }
+
+        // if we didn't find a displayed group, set it to the row node
+        if (_.missing(this.displayedGroup)) {
+            this.displayedGroup = rowNode;
+        }
+    }
+
+    public onExpandClicked(): void {
+        this.onExpandOrContract();
+    }
+
+    public onCellDblClicked(event: MouseEvent): void {
+        // we want to avoid acting on double click events on the expand / contract icon,
+        // as that icons already has expand / collapse functionality on it. otherwise if
+        // the icon was double clicked, we would get 'click', 'click', 'dblclick' which
+        // is open->close->open, however double click should be open->close only.
+        let targetIsExpandIcon
+            = _.isElementInEventPath(this.eExpanded, event)
+            || _.isElementInEventPath(this.eContracted, event);
+
+        if (!targetIsExpandIcon) {
+            this.onExpandOrContract();
         }
     }
 
     public onExpandOrContract(): void {
-        let rowNode = this.params.node;
+
+        // must use the displayedGroup, so if data was dragged down, we expand the parent, not this row
+        let rowNode: RowNode = this.displayedGroup;
 
         rowNode.setExpanded(!rowNode.expanded);
 
         if (this.gridOptionsWrapper.isGroupIncludeFooter()) {
-            this.params.api.refreshRows([rowNode]);
+            this.params.api.redrawRows({rowNodes: [rowNode]});
         }
     }
 
+    private isExpandable(): boolean {
+        let rowNode = this.params.node;
+        let reducedLeafNode = this.columnController.isPivotMode() && rowNode.leafGroup;
+        return this.draggedFromHideOpenParents ||
+                (rowNode.isExpandable() && !rowNode.footer && !reducedLeafNode);
+    }
+
     private showExpandAndContractIcons(): void {
+
         let rowNode = this.params.node;
 
-        let reducedLeafNode = this.columnController.isPivotMode() && rowNode.leafGroup;
-
-        let expandable = rowNode.isExpandable() && !rowNode.footer && !reducedLeafNode;
-        if (expandable) {
-            // if expandable, show one based on expand state
-            _.setVisible(this.eContracted, !rowNode.expanded);
-            _.setVisible(this.eExpanded, rowNode.expanded && !rowNode.loading);
-            _.setVisible(this.eLoading, rowNode.expanded && rowNode.loading);
+        if (this.isExpandable()) {
+            // if expandable, show one based on expand state.
+            // if we were dragged down, means our parent is always expanded
+            let expanded = this.draggedFromHideOpenParents ? true : rowNode.expanded;
+            _.setVisible(this.eContracted, !expanded);
+            _.setVisible(this.eExpanded, expanded);
         } else {
             // it not expandable, show neither
             _.setVisible(this.eExpanded, false);
             _.setVisible(this.eContracted, false);
-            _.setVisible(this.eLoading, false);
         }
+    }
+
+    public refresh(): boolean {
+        return false;
     }
 }

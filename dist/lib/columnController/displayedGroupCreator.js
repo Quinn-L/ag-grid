@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -134,7 +134,9 @@ var DisplayedGroupCreator = (function () {
         var index = 0;
         while (currentChildren && currentChildren[0] && currentChildren[0] instanceof originalColumnGroup_1.OriginalColumnGroup) {
             // putting in a deterministic fake id, in case the API in the future needs to reference the col
-            result.push(new originalColumnGroup_1.OriginalColumnGroup(null, 'FAKE_PATH_' + index, true));
+            var fakePath = new originalColumnGroup_1.OriginalColumnGroup(null, 'FAKE_PATH_' + index, true);
+            this.context.wireBean(fakePath);
+            result.push(fakePath);
             currentChildren = currentChildren[0].getChildren();
             index++;
         }
@@ -173,17 +175,17 @@ var DisplayedGroupCreator = (function () {
             }
         }
     };
+    __decorate([
+        context_2.Autowired('columnUtils'),
+        __metadata("design:type", columnUtils_1.ColumnUtils)
+    ], DisplayedGroupCreator.prototype, "columnUtils", void 0);
+    __decorate([
+        context_2.Autowired('context'),
+        __metadata("design:type", context_1.Context)
+    ], DisplayedGroupCreator.prototype, "context", void 0);
+    DisplayedGroupCreator = __decorate([
+        context_1.Bean('displayedGroupCreator')
+    ], DisplayedGroupCreator);
     return DisplayedGroupCreator;
 }());
-__decorate([
-    context_2.Autowired('columnUtils'),
-    __metadata("design:type", columnUtils_1.ColumnUtils)
-], DisplayedGroupCreator.prototype, "columnUtils", void 0);
-__decorate([
-    context_2.Autowired('context'),
-    __metadata("design:type", context_1.Context)
-], DisplayedGroupCreator.prototype, "context", void 0);
-DisplayedGroupCreator = __decorate([
-    context_1.Bean('displayedGroupCreator')
-], DisplayedGroupCreator);
 exports.DisplayedGroupCreator = DisplayedGroupCreator;

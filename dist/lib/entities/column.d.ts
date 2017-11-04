@@ -1,14 +1,12 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { ColumnGroupChild } from "./columnGroupChild";
 import { OriginalColumnGroupChild } from "./originalColumnGroupChild";
-import { ColDef, AbstractColDef, IAggFunc } from "./colDef";
+import { AbstractColDef, ColDef, IAggFunc } from "./colDef";
 import { RowNode } from "./rowNode";
-import { ICellRendererFunc, ICellRendererComp } from "../rendering/cellRenderers/iCellRenderer";
-import { ICellEditorComp } from "../rendering/cellEditors/iCellEditor";
-import { IFilter } from "../interfaces/iFilter";
-export declare class Column implements ColumnGroupChild, OriginalColumnGroupChild {
+import { IEventEmitter } from "../interfaces/iEventEmitter";
+export declare class Column implements ColumnGroupChild, OriginalColumnGroupChild, IEventEmitter {
     static EVENT_MOVING_CHANGED: string;
     static EVENT_LEFT_CHANGED: string;
     static EVENT_WIDTH_CHANGED: string;
@@ -18,6 +16,7 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     static EVENT_FILTER_CHANGED: string;
     static EVENT_FILTER_ACTIVE_CHANGED: string;
     static EVENT_SORT_CHANGED: string;
+    static EVENT_MENU_VISIBLE_CHANGED: string;
     static EVENT_ROW_GROUP_CHANGED: string;
     static EVENT_PIVOT_CHANGED: string;
     static EVENT_VALUE_CHANGED: string;
@@ -28,6 +27,8 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     private gridOptionsWrapper;
     private columnUtils;
     private frameworkFactory;
+    private columnApi;
+    private gridApi;
     private colDef;
     private colId;
     private actualWidth;
@@ -39,6 +40,7 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     private sort;
     private sortedAt;
     private moving;
+    private menuVisible;
     private lastLeftPinned;
     private firstRightPinned;
     private minWidth;
@@ -51,27 +53,13 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     private pivotActive;
     private aggregationActive;
     private primary;
-    private cellRenderer;
-    private floatingCellRenderer;
-    private cellEditor;
-    private filter;
     private parent;
     constructor(colDef: ColDef, colId: String, primary: boolean);
     setParent(parent: ColumnGroupChild): void;
     getParent(): ColumnGroupChild;
     initialise(): void;
-    getCellRenderer(): {
-        new (): ICellRendererComp;
-    } | ICellRendererFunc | string;
-    getCellEditor(): {
-        new (): ICellEditorComp;
-    } | string;
-    getFloatingCellRenderer(): {
-        new (): ICellRendererComp;
-    } | ICellRendererFunc | string;
-    getFilter(): {
-        new (): IFilter;
-    } | string;
+    isEmptyGroup(): boolean;
+    isRowGroupDisplayed(colId: string): boolean;
     getUniqueId(): string;
     isPrimary(): boolean;
     isFilterAllowed(): boolean;
@@ -83,10 +71,16 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     private createIsColumnFuncParams(rowNode);
     isSuppressNavigable(rowNode: RowNode): boolean;
     isCellEditable(rowNode: RowNode): boolean;
+    isSuppressPaste(rowNode: RowNode): boolean;
+    isResizable(): boolean;
+    private isColumnFunc(rowNode, value);
     setMoving(moving: boolean): void;
+    private createColumnEvent(type);
     isMoving(): boolean;
     getSort(): string;
     setSort(sort: string): void;
+    setMenuVisible(visible: boolean): void;
+    isMenuVisible(): boolean;
     isSortAscending(): boolean;
     isSortDescending(): boolean;
     isSortNone(): boolean;
@@ -118,6 +112,7 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     getId(): string;
     getDefinition(): AbstractColDef;
     getActualWidth(): number;
+    getColSpan(rowNode: RowNode): number;
     setActualWidth(actualWidth: number): void;
     isGreaterThanMax(width: number): boolean;
     getMinWidth(): number;
@@ -134,4 +129,5 @@ export declare class Column implements ColumnGroupChild, OriginalColumnGroupChil
     isAllowPivot(): boolean;
     isAllowValue(): boolean;
     isAllowRowGroup(): boolean;
+    getMenuTabs(defaultValues: string[]): string[];
 }

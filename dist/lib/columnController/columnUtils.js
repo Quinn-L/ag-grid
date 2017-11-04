@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -71,8 +71,8 @@ var ColumnUtils = (function () {
         }
     };
     /*    public getPathForColumn(column: Column, allDisplayedColumnGroups: ColumnGroupChild[]): ColumnGroup[] {
-            var result: ColumnGroup[] = [];
-            var found = false;
+            let result: ColumnGroup[] = [];
+            let found = false;
     
             recursePath(allDisplayedColumnGroups, 0);
     
@@ -86,14 +86,14 @@ var ColumnUtils = (function () {
     
             function recursePath(balancedColumnTree: ColumnGroupChild[], dept: number): void {
     
-                for (var i = 0; i<balancedColumnTree.length; i++) {
+                for (let i = 0; i<balancedColumnTree.length; i++) {
                     if (found) {
                         // quit the search, so 'result' is kept with the found result
                         return;
                     }
-                    var node = balancedColumnTree[i];
+                    let node = balancedColumnTree[i];
                     if (node instanceof ColumnGroup) {
-                        var nextNode = <ColumnGroup> node;
+                        let nextNode = <ColumnGroup> node;
                         recursePath(nextNode.getChildren(), dept+1);
                         result[dept] = node;
                     } else {
@@ -140,13 +140,13 @@ var ColumnUtils = (function () {
             callback(child);
         });
     };
+    __decorate([
+        context_2.Autowired('gridOptionsWrapper'),
+        __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+    ], ColumnUtils.prototype, "gridOptionsWrapper", void 0);
+    ColumnUtils = __decorate([
+        context_1.Bean('columnUtils')
+    ], ColumnUtils);
     return ColumnUtils;
 }());
-__decorate([
-    context_2.Autowired('gridOptionsWrapper'),
-    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
-], ColumnUtils.prototype, "gridOptionsWrapper", void 0);
-ColumnUtils = __decorate([
-    context_1.Bean('columnUtils')
-], ColumnUtils);
 exports.ColumnUtils = ColumnUtils;

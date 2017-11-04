@@ -1,11 +1,11 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
+import { GridOptionsWrapper } from "../gridOptionsWrapper";
 export interface RowContainerComponentParams {
     eContainer: HTMLElement;
     eViewport?: HTMLElement;
     hideWhenNoChildren?: boolean;
-    useDocumentFragment?: boolean;
 }
 /**
  * There are many instances of this component covering each of the areas a row can be entered
@@ -13,17 +13,23 @@ export interface RowContainerComponentParams {
  * elements, there is no template. All of the elements are part of the GridPanel.
  */
 export declare class RowContainerComponent {
+    gridOptionsWrapper: GridOptionsWrapper;
     private eContainer;
-    private eDocumentFragment;
     private eViewport;
     private hideWhenNoChildren;
     private childCount;
     private visible;
+    private rowTemplatesToAdd;
+    private afterGuiAttachedCallbacks;
+    private domOrder;
+    private lastPlacedElement;
     constructor(params: RowContainerComponentParams);
-    setupDocumentFragment(): void;
+    private postConstruct();
+    getRowElement(compId: number): HTMLElement;
     setHeight(height: number): void;
-    appendRowElement(eRow: HTMLElement): void;
+    flushRowTemplates(): void;
+    appendRowTemplate(rowTemplate: string, callback: () => void): void;
+    ensureDomOrder(eRow: HTMLElement): void;
     removeRowElement(eRow: HTMLElement): void;
-    flushDocumentFragment(): void;
     private checkVisibility();
 }

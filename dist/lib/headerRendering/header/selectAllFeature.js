@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -34,6 +34,7 @@ var events_1 = require("../../events");
 var eventService_1 = require("../../eventService");
 var constants_1 = require("../../constants");
 var selectionController_1 = require("../../selectionController");
+var gridOptionsWrapper_1 = require("../../gridOptionsWrapper");
 var SelectAllFeature = (function (_super) {
     __extends(SelectAllFeature, _super);
     function SelectAllFeature(cbSelectAll, column) {
@@ -127,9 +128,9 @@ var SelectAllFeature = (function (_super) {
     };
     SelectAllFeature.prototype.checkRightRowModelType = function () {
         var rowModelType = this.rowModel.getType();
-        var rowModelMatches = rowModelType === constants_1.Constants.ROW_MODEL_TYPE_NORMAL || constants_1.Constants.ROW_MODEL_TYPE_PAGINATION;
+        var rowModelMatches = rowModelType === constants_1.Constants.ROW_MODEL_TYPE_IN_MEMORY;
         if (!rowModelMatches) {
-            console.log("ag-Grid: selectAllCheckbox is only available if using normal or pagination row models, you are using " + rowModelType);
+            console.log("ag-Grid: selectAllCheckbox is only available if using normal row model, you are using " + rowModelType);
         }
     };
     SelectAllFeature.prototype.onCbSelectAll = function () {
@@ -148,47 +149,66 @@ var SelectAllFeature = (function (_super) {
         }
     };
     SelectAllFeature.prototype.isCheckboxSelection = function () {
-        var headerCheckboxSelection = this.column.getColDef().headerCheckboxSelection;
-        if (headerCheckboxSelection === true) {
-            return true;
-        }
-        if (typeof headerCheckboxSelection === 'function') {
-            var func = headerCheckboxSelection;
-            return func({
+        var result = this.column.getColDef().headerCheckboxSelection;
+        if (typeof result === 'function') {
+            var func = result;
+            result = func({
                 column: this.column,
                 colDef: this.column.getColDef(),
                 columnApi: this.columnApi,
                 api: this.gridApi
             });
         }
-        return false;
+        if (result) {
+            if (this.gridOptionsWrapper.isRowModelEnterprise()) {
+                console.warn('headerCheckboxSelection is not supported for Enterprise Row Model');
+                return false;
+            }
+            if (this.gridOptionsWrapper.isRowModelInfinite()) {
+                console.warn('headerCheckboxSelection is not supported for Infinite Row Model');
+                return false;
+            }
+            if (this.gridOptionsWrapper.isRowModelViewport()) {
+                console.warn('headerCheckboxSelection is not supported for Viewport Row Model');
+                return false;
+            }
+            // otherwise the row model is compatible, so return true
+            return true;
+        }
+        else {
+            return false;
+        }
     };
+    __decorate([
+        context_1.Autowired('gridApi'),
+        __metadata("design:type", gridApi_1.GridApi)
+    ], SelectAllFeature.prototype, "gridApi", void 0);
+    __decorate([
+        context_1.Autowired('columnApi'),
+        __metadata("design:type", columnController_1.ColumnApi)
+    ], SelectAllFeature.prototype, "columnApi", void 0);
+    __decorate([
+        context_1.Autowired('eventService'),
+        __metadata("design:type", eventService_1.EventService)
+    ], SelectAllFeature.prototype, "eventService", void 0);
+    __decorate([
+        context_1.Autowired('rowModel'),
+        __metadata("design:type", Object)
+    ], SelectAllFeature.prototype, "rowModel", void 0);
+    __decorate([
+        context_1.Autowired('selectionController'),
+        __metadata("design:type", selectionController_1.SelectionController)
+    ], SelectAllFeature.prototype, "selectionController", void 0);
+    __decorate([
+        context_1.Autowired('gridOptionsWrapper'),
+        __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+    ], SelectAllFeature.prototype, "gridOptionsWrapper", void 0);
+    __decorate([
+        context_1.PostConstruct,
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], SelectAllFeature.prototype, "postConstruct", null);
     return SelectAllFeature;
 }(beanStub_1.BeanStub));
-__decorate([
-    context_1.Autowired('gridApi'),
-    __metadata("design:type", gridApi_1.GridApi)
-], SelectAllFeature.prototype, "gridApi", void 0);
-__decorate([
-    context_1.Autowired('columnApi'),
-    __metadata("design:type", columnController_1.ColumnApi)
-], SelectAllFeature.prototype, "columnApi", void 0);
-__decorate([
-    context_1.Autowired('eventService'),
-    __metadata("design:type", eventService_1.EventService)
-], SelectAllFeature.prototype, "eventService", void 0);
-__decorate([
-    context_1.Autowired('rowModel'),
-    __metadata("design:type", Object)
-], SelectAllFeature.prototype, "rowModel", void 0);
-__decorate([
-    context_1.Autowired('selectionController'),
-    __metadata("design:type", selectionController_1.SelectionController)
-], SelectAllFeature.prototype, "selectionController", void 0);
-__decorate([
-    context_1.PostConstruct,
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], SelectAllFeature.prototype, "postConstruct", null);
 exports.SelectAllFeature = SelectAllFeature;

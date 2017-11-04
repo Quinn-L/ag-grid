@@ -1,6 +1,6 @@
-// Type definitions for ag-grid v9.0.0
+// Type definitions for ag-grid v14.0.1
 // Project: http://www.ag-grid.com/
-// Definitions by: Niall Crosby <https://github.com/ceolter/>
+// Definitions by: Niall Crosby <https://github.com/ag-grid/>
 import { Column } from "../entities/column";
 import { ColDef } from "../entities/colDef";
 import { IRowModel } from "./iRowModel";
@@ -68,4 +68,7 @@ export interface IFilterParams {
     doesRowPassOtherFilter: (rowNode: RowNode) => boolean;
     context: any;
     $scope: any;
+    filterOptions?: string[];
+    defaultOption?: string;
+    textFormatter?: (from: string) => string;
 }

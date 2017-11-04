@@ -1,6 +1,6 @@
 /**
  * ag-grid - Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components
- * @version v9.0.0
+ * @version v14.0.1
  * @link http://www.ag-grid.com/
  * @license MIT
  */
@@ -28,6 +28,8 @@ var StandardMenuFactory = (function () {
         var _this = this;
         this.showPopup(column, function (eMenu) {
             _this.popupService.positionPopupUnderMouseEvent({
+                column: column,
+                type: 'columnMenu',
                 mouseEvent: mouseEvent,
                 ePopup: eMenu
             });
@@ -36,7 +38,8 @@ var StandardMenuFactory = (function () {
     StandardMenuFactory.prototype.showMenuAfterButtonClick = function (column, eventSource) {
         var _this = this;
         this.showPopup(column, function (eMenu) {
-            _this.popupService.positionPopupUnderComponent({ eventSource: eventSource, ePopup: eMenu, keepWithinBounds: true });
+            _this.popupService.positionPopupUnderComponent({ type: 'columnMenu', eventSource: eventSource,
+                ePopup: eMenu, keepWithinBounds: true, column: column });
         });
     };
     StandardMenuFactory.prototype.showPopup = function (column, positionCallback) {
@@ -44,7 +47,9 @@ var StandardMenuFactory = (function () {
         var filterWrapper = this.filterManager.getOrCreateFilterWrapper(column);
         var eMenu = document.createElement('div');
         utils_1.Utils.addCssClass(eMenu, 'ag-menu');
-        eMenu.appendChild(filterWrapper.gui);
+        filterWrapper.guiPromise.promise.then(function (gui) {
+            eMenu.appendChild(gui);
+        });
         var hidePopup;
         var bodyScrollListener = function (event) {
             // if h scroll, popup is no longer over the column
@@ -55,41 +60,45 @@ var StandardMenuFactory = (function () {
         this.eventService.addEventListener('bodyScroll', bodyScrollListener);
         var closedCallback = function () {
             _this.eventService.removeEventListener('bodyScroll', bodyScrollListener);
+            column.setMenuVisible(false);
         };
         // need to show filter before positioning, as only after filter
         // is visible can we find out what the width of it is
         hidePopup = this.popupService.addAsModalPopup(eMenu, true, closedCallback);
         positionCallback(eMenu);
-        if (filterWrapper.filter.afterGuiAttached) {
-            var params = {
-                hidePopup: hidePopup
-            };
-            filterWrapper.filter.afterGuiAttached(params);
-        }
+        filterWrapper.filterPromise.then(function (filter) {
+            if (filter.afterGuiAttached) {
+                var params = {
+                    hidePopup: hidePopup
+                };
+                filter.afterGuiAttached(params);
+            }
+        });
+        column.setMenuVisible(true);
     };
     StandardMenuFactory.prototype.isMenuEnabled = function (column) {
         // for standard, we show menu if filter is enabled, and he menu is not suppressed
         return this.gridOptionsWrapper.isEnableFilter() && column.isFilterAllowed();
     };
+    __decorate([
+        context_1.Autowired('eventService'),
+        __metadata("design:type", eventService_1.EventService)
+    ], StandardMenuFactory.prototype, "eventService", void 0);
+    __decorate([
+        context_1.Autowired('filterManager'),
+        __metadata("design:type", filterManager_1.FilterManager)
+    ], StandardMenuFactory.prototype, "filterManager", void 0);
+    __decorate([
+        context_1.Autowired('popupService'),
+        __metadata("design:type", popupService_1.PopupService)
+    ], StandardMenuFactory.prototype, "popupService", void 0);
+    __decorate([
+        context_1.Autowired('gridOptionsWrapper'),
+        __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
+    ], StandardMenuFactory.prototype, "gridOptionsWrapper", void 0);
+    StandardMenuFactory = __decorate([
+        context_1.Bean('menuFactory')
+    ], StandardMenuFactory);
     return StandardMenuFactory;
 }());
-__decorate([
-    context_1.Autowired('eventService'),
-    __metadata("design:type", eventService_1.EventService)
-], StandardMenuFactory.prototype, "eventService", void 0);
-__decorate([
-    context_1.Autowired('filterManager'),
-    __metadata("design:type", filterManager_1.FilterManager)
-], StandardMenuFactory.prototype, "filterManager", void 0);
-__decorate([
-    context_1.Autowired('popupService'),
-    __metadata("design:type", popupService_1.PopupService)
-], StandardMenuFactory.prototype, "popupService", void 0);
-__decorate([
-    context_1.Autowired('gridOptionsWrapper'),
-    __metadata("design:type", gridOptionsWrapper_1.GridOptionsWrapper)
-], StandardMenuFactory.prototype, "gridOptionsWrapper", void 0);
-StandardMenuFactory = __decorate([
-    context_1.Bean('menuFactory')
-], StandardMenuFactory);
 exports.StandardMenuFactory = StandardMenuFactory;
